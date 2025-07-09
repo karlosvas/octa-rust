@@ -1,4 +1,4 @@
-use crate::message::enums;
+use crate::message::states;
 use crate::styles;
 use iced::{
     Length,
@@ -8,7 +8,7 @@ use iced::{
 pub struct Partiture;
 
 impl Partiture {
-    pub fn create_partiture() -> Container<'static, enums::Message> {
+    pub fn create_partiture() -> Container<'static, states::Buttons> {
         let mut staff = column![].spacing(20);
 
         for _ in 0..8 {
