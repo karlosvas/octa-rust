@@ -9,5 +9,5 @@ pub enum Buttons {
 pub enum AppState {
     MainMenu,
     Game,
-    Settings,
+    // Settings,
 }

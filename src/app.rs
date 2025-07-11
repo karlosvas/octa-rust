@@ -1,14 +1,15 @@
 use crate::message::states::{AppState, Buttons};
 use crate::styles::custom_style;
-use crate::widgets::partiture;
+use crate::utils::{reusable, utils};
+use crate::widgets::notes::Note;
+use crate::widgets::partiture::Partiture;
 use iced::{
     Element, Length,
     alignment::{Horizontal, Vertical},
-    widget::{Button, Container, Image, Text, column, image::Handle},
+    widget::{Container, column},
 };
 
 //  Estructura de la aplicación
-#[derive(Debug, Clone)]
 pub struct MyApp {
     state: AppState,
 }
@@ -34,32 +35,16 @@ impl MyApp {
         }
     }
 
-    // Crear botones
-    fn create_button(text: &str, message: Buttons) -> Button<'_, Buttons> {
-        Button::new(
-            Container::new(Text::new(text))
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .align_x(Horizontal::Center)
-                .align_y(Vertical::Center),
-        )
-        .on_press(message)
-        .width(Length::Fixed(400.0))
-        .height(Length::Fixed(50.0))
-    }
-
-    // Crear imagenes
-    fn create_image(path: &str, heigth: f32, width: f32) -> Image {
-        Image::new(Handle::from_path(path))
-            .width(Length::Fixed(width))
-            .height(Length::Fixed(heigth))
-    }
-
     // Menú de la applicación
     fn main_menu_view(&self) -> Element<Buttons> {
-        let img_octa_rust = Self::create_image("assets/octarust.png", 400.0, 400.0);
-        let button_play = Self::create_button("Play", Buttons::Play);
-        let button_exit = Self::create_button("Exit", Buttons::Exit);
+        let img_octa_rust = reusable::create_image(
+            &format!("{}/assets/octarust.png", env!("CARGO_MANIFEST_DIR")),
+            400.0,
+            400.0,
+        );
+        let button_play = reusable::create_button("Play", Buttons::Play);
+        let button_exit = reusable::create_button("Exit", Buttons::Exit);
+
         let main_column = column![img_octa_rust, button_play, button_exit].spacing(20);
         Container::new(main_column)
             .width(Length::Fill)
@@ -72,9 +57,50 @@ impl MyApp {
 
     // Menú del juego
     fn game_view(&self) -> Element<Buttons> {
-        let partiture_l = partiture::Partiture::create_partiture();
-        let partiture_r = partiture::Partiture::create_partiture();
-        let game_column = column![partiture_l, partiture_r].spacing(10);
+        // Crear instancias de partituras con notas
+        let mut partiture_l = Partiture::new("for-elise".to_string(), Vec::new(), 0.0);
+        let mut partiture_r = Partiture::new("for-elise".to_string(), Vec::new(), 0.0);
+
+        // Cargar notas desde el archivo JSON
+        let notes_l: Vec<Note> = Note::load_notes_from_file(
+            &format!("{}/notes.json", env!("CARGO_MANIFEST_DIR")),
+            &partiture_l.name,
+            "left",
+        )
+        .unwrap();
+        let notes_r: Vec<Note> = Note::load_notes_from_file(
+            &format!("{}/notes.json", env!("CARGO_MANIFEST_DIR")),
+            &partiture_r.name,
+            "right",
+        )
+        .unwrap();
+
+        partiture_l.time = notes_l.iter().map(|n| n.duration).sum();
+        partiture_r.time = notes_r.iter().map(|n| n.duration).sum();
+
+        // Añadir notas a las partituras
+        for note in notes_l.into_iter() {
+            partiture_l.add_note(note);
+        }
+        for note in notes_r.into_iter() {
+            partiture_r.add_note(note);
+        }
+
+        // Crear elementos de partitura para la vista
+        let mut partiture_r_overlay = Element::new(partiture_r);
+        let mut partiture_l_overlay = Element::new(partiture_l);
+
+        // Crear el gran pentagrama para ambas partituras
+        utils::create_grand_staff(&mut partiture_r_overlay, &mut partiture_l_overlay);
+
+        // Crear la columna principal del juego
+        let game_column = column![
+            partiture_r_overlay, // Parte derecha de la partitura
+            partiture_l_overlay, // Parte izquierda de la partitura
+        ]
+        .spacing(20);
+
+        // Contenedor principal del juego
         Container::new(game_column)
             .width(Length::Fill)
             .height(Length::Fill)
@@ -89,7 +115,7 @@ impl MyApp {
         match self.state {
             AppState::MainMenu => self.main_menu_view(),
             AppState::Game => self.game_view(),
-            AppState::Settings => self.main_menu_view(),
+            // AppState::Settings => self.main_menu_view(),
         }
     }
 }
