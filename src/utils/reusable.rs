@@ -1,15 +1,42 @@
 use iced::{
-    Length,
+    Element, Length,
     alignment::{Horizontal, Vertical},
-    widget::{Button, Container, Image, Text, image::Handle},
+    widget::{Button, Container, Image, Row, Text, image::Handle},
 };
 
-use crate::message::states::Buttons;
-
 // Crear botones
-pub fn create_button(text: &str, message: Buttons) -> Button<'_, Buttons> {
+pub fn create_button<Message>(
+    message: Message,
+    text: Option<&str>,
+    image: Option<Image>,
+) -> Button<'_, Message>
+where
+    Message: Clone + 'static,
+{
+    let mut content: Vec<Element<Message>> = Vec::new();
+
+    // Añadir imagen si existe
+    if let Some(img) = image {
+        content.push(img.into());
+    }
+
+    // Añadir texto si existe
+    if let Some(txt) = text {
+        content.push(Text::new(txt).size(32).into());
+    }
+
+    // Crear contenedor con el contenido
+    let button_content = if content.len() == 1 {
+        content.into_iter().next().unwrap()
+    } else {
+        Row::with_children(content)
+            .spacing(10)
+            .align_y(Vertical::Center)
+            .into()
+    };
+
     Button::new(
-        Container::new(Text::new(text))
+        Container::new(button_content)
             .width(Length::Fill)
             .height(Length::Fill)
             .align_x(Horizontal::Center)

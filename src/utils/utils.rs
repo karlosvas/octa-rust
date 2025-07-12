@@ -1,4 +1,4 @@
-use crate::message::states::Buttons;
+use crate::message::states::AppMessage;
 use crate::utils::reusable;
 use crate::widgets::partiture::Partiture;
 use iced::widget::Stack;
@@ -9,19 +9,19 @@ use iced::{
 };
 
 pub fn create_grand_staff(
-    partiture_r_overlay: &mut Element<Buttons>,
-    partiture_l_overlay: &mut Element<Buttons>,
+    partiture_r_overlay: &mut Element<AppMessage>,
+    partiture_l_overlay: &mut Element<AppMessage>,
 ) {
     // Primero extraemos el valor original usando std::mem::replace
     let original_r = std::mem::replace(
         partiture_r_overlay,
-        Element::new(Partiture::new("temp".to_string(), Vec::new(), 0.0)),
+        Element::new(Partiture::new("temp".to_string(), Vec::new(), 0.0, 0.0)),
     );
 
     // Luego hacemos lo mismo con la partitura izquierda
     let original_l = std::mem::replace(
         partiture_l_overlay,
-        Element::new(Partiture::new("temp".to_string(), Vec::new(), 0.0)),
+        Element::new(Partiture::new("temp".to_string(), Vec::new(), 0.0, 0.0)),
     );
 
     // Imagenes de clave de sol y fa

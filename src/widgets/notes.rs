@@ -1,11 +1,11 @@
 use crate::utils::helper_json::point_serde;
 use iced::{
-    Color, Event, Point, Rectangle, Size,
+    Border, Color, Event, Point, Rectangle, Size,
     advanced::{
         Clipboard, Layout, Renderer as RenderTrait, Shell,
         layout::Node,
         overlay::{self, Overlay},
-        renderer,
+        renderer::{self, Quad},
         widget::Operation,
     },
     event::Status,
@@ -29,16 +29,18 @@ pub struct Note {
 
 // Constructor para la nota musical
 impl Note {
-    // pub fn new(name: String, position: Point, pitch: u8, duration: f32) -> Self {
-    //     Self {
-    //         name,
-    //         position,
-    //         start: 0.0,
-    //         pitch,
-    //         duration,
-    //         is_active: false,
-    //     }
-    // }
+    // Constructor para crear una nota con nombre, posición, tono y duración
+    #[allow(dead_code)]
+    pub fn new(name: String, position: Point, pitch: u8, duration: f32) -> Self {
+        Self {
+            name,
+            position,
+            start: 0.0,
+            pitch,
+            duration,
+            is_active: false,
+        }
+    }
 
     // Cargar múltiples notas
     pub fn load_notes_from_file(
@@ -64,12 +66,6 @@ impl Note {
         if let Some(piece_data) = data.get(piece_name) {
             if let Some(notes_array) = piece_data.get(hand) {
                 let notes: Vec<Note> = from_value(notes_array.clone())?;
-                println!(
-                    "✅ Cargadas {} notas para '{}' (mano: {})",
-                    notes.len(),
-                    piece_name,
-                    hand
-                );
                 Ok(notes)
             } else {
                 Err(format!(
@@ -82,54 +78,73 @@ impl Note {
             Err(format!("❌ Pieza '{}' no encontrada en el archivo", piece_name).into())
         }
     }
-}
 
-// Implementación del trait de Overlay para la nota musical
-impl<Message, Theme, Renderer> Overlay<Message, Theme, Renderer> for Note
-where
-    Renderer: RenderTrait,
-{
-    // Define el tamaño y la posición del elemento
-    fn layout(&mut self, _renderer: &Renderer, _bounds: Size) -> Node {
-        // Calcular tamaño basado en la duración de la nota
-        let size = Size::new(20.0 * self.duration, 20.0);
-        // Crear un nodo en la posición de la nota
-        Node::with_children(
-            size,
-            vec![], // Sin hijos
-        )
-        .move_to(iced::Point::new(self.position.x, self.position.y))
+    // Dibujar redonda (4)
+    fn draw_whole_note(&self, renderer: &mut impl RenderTrait, center: Point) {
+        let (black, white) = self.get_note_colors();
+
+        let note_head = Rectangle {
+            x: center.x - 7.0,
+            y: center.y - 7.0,
+            width: 18.0,
+            height: 18.0,
+        };
+        // Óvalo blanco con borde negro grueso
+        renderer.fill_quad(
+            Quad {
+                bounds: note_head,
+                border: iced::Border {
+                    color: black,
+                    width: 4.0,
+                    radius: 9.0.into(),
+                },
+                shadow: Default::default(),
+            },
+            white,
+        );
     }
 
-    // Dibuja la nota musical en el renderer
-    fn draw(
-        &self,
-        renderer: &mut Renderer,
-        _theme: &Theme,
-        _style: &renderer::Style,
-        layout: Layout<'_>,
-        _cursor: Cursor,
-    ) {
-        let bounds = layout.bounds();
+    // Dibujar blanca (2)
+    fn draw_half_note(&self, renderer: &mut impl RenderTrait, center: Point) {
+        let (black, _white) = self.get_note_colors();
 
-        // Configurar el color negro para la nota
-        let black = Color::BLACK;
-
-        // 1. Dibujar la cabeza de la nota (óvalo negro)
-        let note_head_center = Point::new(
-            bounds.x + 10.0,                // Un poco hacia la derecha del inicio
-            bounds.y + bounds.height / 2.0, // Centro vertical
-        );
-
-        // Crear óvalo para la cabeza de la nota
         let note_head = Rectangle {
-            x: note_head_center.x - 6.0,
-            y: note_head_center.y - 4.0,
-            width: 12.0,
-            height: 8.0,
+            x: center.x - 5.0,
+            y: center.y - 1.0,
+            width: 15.0,
+            height: 15.0,
         };
 
-        // Dibujar la cabeza de la nota (óvalo relleno)
+        // Fondo blanco
+        renderer.fill_quad(
+            Quad {
+                bounds: note_head,
+                border: iced::Border {
+                    color: black,
+                    width: 4.0,
+                    radius: 4.0.into(),
+                },
+                shadow: Default::default(),
+            },
+            Color::WHITE,
+        );
+
+        // 2. Dibujar la plica (línea vertical)
+        self.draw_stem(renderer, center, black);
+    }
+
+    // Dibujar negra (1)
+    fn draw_quarter_note(&self, renderer: &mut impl RenderTrait, center: Point) {
+        let (black, _white) = self.get_note_colors();
+
+        // 1. Dibujar la cabeza de la nota (óvalo NEGRO)
+        let note_head = Rectangle {
+            x: center.x - 5.0,
+            y: center.y,
+            width: 15.0,
+            height: 15.0,
+        };
+
         renderer.fill_quad(
             iced::advanced::renderer::Quad {
                 bounds: note_head,
@@ -144,25 +159,23 @@ where
         );
 
         // 2. Dibujar la plica (línea vertical)
-        let stem_start = Point::new(
-            note_head_center.x + 6.0, // Desde el borde derecho de la cabeza
-            note_head_center.y,
-        );
-        let stem_end = Point::new(
-            stem_start.x,
-            stem_start.y - 25.0, // Línea hacia arriba
-        );
+        self.draw_stem(renderer, center, black);
+    }
 
-        // Dibujar la plica
-        let stem_rect = Rectangle {
-            x: stem_start.x - 1.0,
-            y: stem_end.y,
-            width: 2.0,
-            height: 25.0,
+    // Dibujar corchea (0.5)
+    fn draw_eighth_note(&self, renderer: &mut impl RenderTrait, center: Point) {
+        let (black, _white) = self.get_note_colors();
+
+        let note_head: Rectangle = Rectangle {
+            x: center.x - 5.0,
+            y: center.y,
+            width: 15.0,
+            height: 15.0,
         };
+        // Óvalo negro
         renderer.fill_quad(
-            iced::advanced::renderer::Quad {
-                bounds: stem_rect,
+            Quad {
+                bounds: note_head,
                 border: iced::Border {
                     color: black,
                     width: 0.0,
@@ -172,6 +185,179 @@ where
             },
             black,
         );
+        // Plica
+        self.draw_stem(renderer, center, black);
+        // Bandera simple
+        let flag = Rectangle {
+            x: center.x + 8.0,
+            y: center.y - 25.0,
+            width: 15.0,
+            height: 6.0,
+        };
+        renderer.fill_quad(
+            Quad {
+                bounds: flag,
+                border: iced::Border {
+                    color: black,
+                    width: 0.0,
+                    radius: 3.0.into(),
+                },
+                shadow: Default::default(),
+            },
+            black,
+        );
+    }
+
+    // Dibujar semicorchea (0.25)
+    fn draw_sixteenth_note(&self, renderer: &mut impl RenderTrait, center: Point) {
+        self.draw_eighth_note(renderer, center);
+        let (black, _white) = self.get_note_colors();
+
+        let flag2 = Rectangle {
+            x: center.x + 10.0,
+            y: center.y - 18.0,
+            width: 12.0,
+            height: 6.0,
+        };
+
+        renderer.fill_quad(
+            Quad {
+                bounds: flag2,
+                border: Border {
+                    color: black,
+                    width: 0.0,
+                    radius: 3.0.into(),
+                },
+                shadow: Default::default(),
+            },
+            black,
+        );
+    }
+
+    // Dibujar fusa (0.125)
+    fn draw_thirty_second_note(&self, renderer: &mut impl RenderTrait, center: Point) {
+        let (black, _white) = self.get_note_colors();
+
+        self.draw_sixteenth_note(renderer, center);
+        let flag3 = Rectangle {
+            x: center.x + 10.0,
+            y: center.y - 11.0,
+            width: 12.0,
+            height: 6.0,
+        };
+        renderer.fill_quad(
+            Quad {
+                bounds: flag3,
+                border: iced::Border {
+                    color: black,
+                    width: 0.0,
+                    radius: 3.0.into(),
+                },
+                shadow: Default::default(),
+            },
+            black,
+        );
+    }
+
+    // Dibujar semifusa (0.0625)
+    fn draw_sixty_fourth_note(&self, renderer: &mut impl RenderTrait, center: Point) {
+        let (black, _white) = self.get_note_colors();
+
+        self.draw_thirty_second_note(renderer, center);
+        // Cuarta bandera
+        let flag4 = Rectangle {
+            x: center.x + 10.0,
+            y: center.y - 4.0,
+            width: 12.0,
+            height: 6.0,
+        };
+        renderer.fill_quad(
+            Quad {
+                bounds: flag4,
+                border: Border {
+                    color: black,
+                    width: 0.0,
+                    radius: 3.0.into(),
+                },
+                shadow: Default::default(),
+            },
+            black,
+        );
+    }
+
+    // Dibujar plica vertical, negras y blancas
+    fn draw_stem(&self, renderer: &mut impl RenderTrait, center: Point, color: Color) {
+        let stem_rect = Rectangle {
+            x: center.x + 5.0,  // Desde el borde derecho de la cabeza
+            y: center.y - 25.0, // Hacia arriba
+            width: 5.0,
+            height: 30.0,
+        };
+
+        renderer.fill_quad(
+            Quad {
+                bounds: stem_rect,
+                border: iced::Border {
+                    color,
+                    width: 0.0,
+                    radius: 0.0.into(),
+                },
+                shadow: Default::default(),
+            },
+            color,
+        );
+    }
+
+    // Obtener colores según el estado de la nota
+    fn get_note_colors(&self) -> (Color, Color) {
+        if self.is_active {
+            // Rojo cangrejo más vivo pero pastel: RGB(0.94, 0.35, 0.25)
+            (
+                Color::from_rgb(0.94, 0.35, 0.25),
+                Color::from_rgb(0.94, 0.35, 0.25),
+            )
+        } else {
+            (Color::BLACK, Color::WHITE)
+        }
+    }
+}
+
+// Implementación del trait de Overlay para la nota musical
+impl<Message, Theme, Renderer> Overlay<Message, Theme, Renderer> for Note
+where
+    Renderer: RenderTrait,
+{
+    // Define el tamaño y la posición del elemento
+    fn layout(&mut self, _renderer: &Renderer, _bounds: Size) -> Node {
+        Node::new(Size::ZERO)
+    }
+
+    // Dibuja la nota musical en el renderer
+    fn draw(
+        &self,
+        renderer: &mut Renderer,
+        _theme: &Theme,
+        _style: &renderer::Style,
+        layout: Layout<'_>,
+        _cursor: Cursor,
+    ) {
+        // Obtenemos la posicion (x,y)
+        let bounds: Rectangle = layout.bounds();
+        let note_head_center = Point::new(
+            bounds.x, // Un poco hacia la derecha del inicio
+            bounds.y, // Centro vertical
+        );
+
+        match self.duration {
+            4.0 => self.draw_whole_note(renderer, note_head_center),
+            2.0 => self.draw_half_note(renderer, note_head_center),
+            1.0 => self.draw_quarter_note(renderer, note_head_center),
+            0.5 => self.draw_eighth_note(renderer, note_head_center),
+            0.25 => self.draw_sixteenth_note(renderer, note_head_center),
+            0.125 => self.draw_thirty_second_note(renderer, note_head_center),
+            0.0625 => self.draw_sixty_fourth_note(renderer, note_head_center),
+            _ => self.draw_quarter_note(renderer, note_head_center),
+        }
     }
 
     // Evento para manejar interacciones, clics, drag & drop, etc.

@@ -16,20 +16,26 @@
       { "name": "B4", "position": [0.0, 0.0], "start": 7.0, "pitch": 71, "duration": 1.0, "is_active": false },
       { "name": "E4", "position": [0.0, 0.0], "start": 8.0, "pitch": 64, "duration": 0.5, "is_active": false },
       { "name": "G#4", "position": [0.0, 0.0], "start": 8.5, "pitch": 68, "duration": 0.5, "is_active": false },
-      { "name": "B4", "position": [0.0, 0.0], "start": 9.0, "pitch": 71, "duration": 1.0, "is_active": false }
+      { "name": "B4", "position": [0.0, 0.0], "start": 9.0, "pitch": 71, "duration": 1.0, "is_active": false },
+      { "name": "C5", "position": [0.0, 0.0], "start": 10.0, "pitch": 72, "duration": 0.5, "is_active": false },
+      { "name": "E5", "position": [0.0, 0.0], "start": 10.5, "pitch": 76, "duration": 0.5, "is_active": false },
+      { "name": "A5", "position": [0.0, 0.0], "start": 11.0, "pitch": 81, "duration": 1.0, "is_active": false },
+      { "name": "B5", "position": [0.0, 0.0], "start": 12.0, "pitch": 83, "duration": 1.0, "is_active": false }
     ],
     "left": [
-      { "name": "C4", "position": [0.0, 0.0], "start": 0.0, "pitch": 60, "duration": 1.0, "is_active": false },
-      { "name": "D4", "position": [0.0, 0.0], "start": 1.0, "pitch": 62, "duration": 1.0, "is_active": false },
-      { "name": "E4", "position": [0.0, 0.0], "start": 2.0, "pitch": 64, "duration": 1.0, "is_active": false },
-      { "name": "F4", "position": [0.0, 0.0], "start": 3.0, "pitch": 65, "duration": 1.0, "is_active": false },
-      { "name": "G4", "position": [0.0, 0.0], "start": 4.0, "pitch": 67, "duration": 1.0, "is_active": false },
-      { "name": "A4", "position": [0.0, 0.0], "start": 5.0, "pitch": 69, "duration": 1.0, "is_active": false },
-      { "name": "B4", "position": [0.0, 0.0], "start": 6.0, "pitch": 71, "duration": 1.0, "is_active": false },
-      { "name": "B4", "position": [0.0, 0.0], "start": 6.0, "pitch": 71, "duration": 1.0, "is_active": false },
-      { "name": "B4", "position": [0.0, 0.0], "start": 6.0, "pitch": 71, "duration": 1.0, "is_active": false },
-      { "name": "B4", "position": [0.0, 0.0], "start": 6.0, "pitch": 71, "duration": 1.0, "is_active": false }
-    ],
-    "time": 10.0
+      { "name": "A2", "position": [0.0, 0.0], "start": 0.0, "pitch": 45, "duration": 2.0, "is_active": false },
+      { "name": "E3", "position": [0.0, 0.0], "start": 1.0, "pitch": 52, "duration": 0.0, "is_active": false },
+      { "name": "A3", "position": [0.0, 0.0], "start": 2.0, "pitch": 57, "duration": 1.0, "is_active": false },
+      { "name": "E3", "position": [0.0, 0.0], "start": 3.0, "pitch": 52, "duration": 1.0, "is_active": false },
+      { "name": "A3", "position": [0.0, 0.0], "start": 4.0, "pitch": 57, "duration": 1.0, "is_active": false },
+      { "name": "C3", "position": [0.0, 0.0], "start": 5.0, "pitch": 48, "duration": 1.0, "is_active": false },
+      { "name": "G3", "position": [0.0, 0.0], "start": 6.0, "pitch": 55, "duration": 1.0, "is_active": false },
+      { "name": "E3", "position": [0.0, 0.0], "start": 7.0, "pitch": 52, "duration": 1.0, "is_active": false },
+      { "name": "E3", "position": [0.0, 0.0], "start": 8.0, "pitch": 52, "duration": 1.0, "is_active": false },
+      { "name": "B2", "position": [0.0, 0.0], "start": 9.0, "pitch": 47, "duration": 1.0, "is_active": false },
+      { "name": "E3", "position": [0.0, 0.0], "start": 10.0, "pitch": 52, "duration": 1.0, "is_active": false },
+      { "name": "G#3", "position": [0.0, 0.0], "start": 11.0, "pitch": 56, "duration": 1.0, "is_active": false },
+      { "name": "B3", "position": [0.0, 0.0], "start": 12.0, "pitch": 59, "duration": 1.0, "is_active": false }
+    ]
   }
 }

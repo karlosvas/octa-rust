@@ -1,7 +1,7 @@
 use crate::widgets::all_notes_overlay::AllNotesOverlay;
 use crate::widgets::notes::Note;
 use iced::{
-    Length, Rectangle, Size,
+    Border, Color, Length, Rectangle, Size,
     advanced::{Layout, Widget, layout::Node, overlay, renderer::Quad, widget::Tree},
 };
 
@@ -10,15 +10,18 @@ pub struct Partiture {
     pub name: String,     // Nombre de la partitura
     pub notes: Vec<Note>, // Notas de la partitura
     pub time: f32,        // Tiempo total de la partitura
+    pub actual_time: f32, // Tiempo de inicio de la partitura
 }
 
+// Declare the lifetime parameter for the impl block
 impl Partiture {
     // Constructor para crear una partitura con notas predefinidas
-    pub fn new(name: String, notes: Vec<Note>, time: f32) -> Self {
+    pub fn new(name: String, notes: Vec<Note>, time: f32, actual_time: f32) -> Self {
         Self {
             name: name,
             notes: notes,
             time: time,
+            actual_time: actual_time,
         }
     }
 
@@ -74,9 +77,9 @@ impl Partiture {
         let line_spacing = (work_area.height - (5.0 * 2.0)) / 6.0; // 5 líneas, 4 espacios
         let line_height = 2.0; // Height::Fixed(2.0)
 
-        // ✅ Dibujar 5 líneas del pentagrama (equivalente al for loop)
+        // Dibujar 5 líneas del pentagrama (equivalente al for loop)
         for i in 0..6 {
-            let y = work_area.y + (i as f32 * (line_height + line_spacing));
+            let y: f32 = work_area.y + (i as f32 * (line_height + line_spacing));
 
             let line_rect = Rectangle {
                 x: work_area.x,
@@ -100,14 +103,42 @@ impl Partiture {
             );
         }
     }
+
+    // Dibujar compás en una posición específica
+    pub fn draw_compas(
+        renderer: &mut impl iced::advanced::Renderer,
+        layout_bounds: iced::Rectangle,
+        note_x: f32,
+    ) {
+        let width_percentage = 0.025; // 2.5% del ancho total (ajustable)
+        let offset = layout_bounds.width * width_percentage; // Si width=800, offset=20
+        let line_rect = Rectangle {
+            x: note_x - offset / 2.0, // Ajustar el offset para centrar la línea
+            y: layout_bounds.y + 20.0,
+            width: 2.0,
+            height: layout_bounds.height,
+        };
+
+        renderer.fill_quad(
+            Quad {
+                bounds: line_rect,
+                border: Border {
+                    color: Color::BLACK,
+                    width: 0.0,
+                    radius: 0.0.into(),
+                },
+                shadow: Default::default(),
+            },
+            Color::BLACK,
+        );
+    }
 }
 
 impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Partiture
 where
-    Renderer: iced::advanced::Renderer,
-    Theme: Clone,
+    Renderer: iced::advanced::Renderer + iced::advanced::text::Renderer,
+    Theme: Clone + Default,
 {
-    // Aquí definimos el tamaño del widget
     fn size(&self) -> iced::Size<Length> {
         Size::new(Length::Fill, Length::Fixed(400.0))
     }
@@ -141,13 +172,13 @@ where
     }
 
     // Elementos flotantes o superpuestos
-    fn overlay<'a>(
-        &'a mut self,
-        _tree: &'a mut Tree,
+    fn overlay(
+        &mut self,
+        _tree: &mut Tree,
         layout: Layout<'_>,
         _renderer: &Renderer,
         translation: iced::Vector,
-    ) -> Option<overlay::Element<'a, Message, Theme, Renderer>> {
+    ) -> Option<overlay::Element<Message, Theme, Renderer>> {
         if !self.notes.is_empty() {
             // Extraer bounds del layout con offsets personalizados
             Some(overlay::Element::new(Box::new(AllNotesOverlay {
@@ -155,7 +186,7 @@ where
                 partiture_bounds: layout.bounds(), // Solo Rectangle
                 offset_x: translation.x,           // Translation + padding
                 offset_y: translation.y,           // Translation + padding
-                partiture_time: self.time,         // Referencia al tiempo de la partitura
+                actual_time: self.actual_time,     // Referencia al tiempo de la partitura
             })))
         } else {
             None

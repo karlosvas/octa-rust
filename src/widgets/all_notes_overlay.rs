@@ -1,14 +1,16 @@
-use crate::widgets::notes::Note;
+use crate::widgets::{
+    notes::Note, partiture::Partiture, temporized_intro_overlay::TemporizedIntroOverlay,
+};
 use iced::{
-    Color, Point, Rectangle, Size,
+    Point, Rectangle, Size,
     advanced::{
-        Layout,
+        Layout, Overlay,
         layout::Node,
         overlay::{self},
-        renderer::Quad,
+        renderer::Style,
     },
     event::Status,
-    mouse::Interaction,
+    mouse::{Cursor, Interaction},
 };
 
 pub struct AllNotesOverlay<'a> {
@@ -16,13 +18,14 @@ pub struct AllNotesOverlay<'a> {
     pub partiture_bounds: Rectangle, // Bounds de la partitura
     pub offset_x: f32,               // Offset horizontal personalizado
     pub offset_y: f32,               // Offset vertical personalizado
-    pub partiture_time: f32,         // Referencia a la partitura
+    pub actual_time: f32,            // Tiempo actual de la partitura
 }
 
 impl<'a, Message, Theme, Renderer> overlay::Overlay<Message, Theme, Renderer>
     for AllNotesOverlay<'a>
 where
-    Renderer: iced::advanced::Renderer,
+    Renderer: iced::advanced::Renderer + iced::advanced::text::Renderer,
+    Theme: Clone + Default,
 {
     fn layout(&mut self, _renderer: &Renderer, _bounds: Size) -> Node {
         // Crear un nodo con tamaño y posición personalizada
@@ -48,8 +51,14 @@ where
         layout: Layout<'_>,
         _cursor: iced::mouse::Cursor,
     ) {
+        let mut curret_time: f32 = 0.0;
         for note in self.notes.iter() {
-            self.draw_note_in_overlay(note, renderer, layout.bounds());
+            self.draw_note_in_overlay::<Message, Theme, Renderer>(
+                note,
+                renderer,
+                layout.bounds(),
+                &mut curret_time,
+            );
         }
     }
 
@@ -97,17 +106,29 @@ where
         _layout: Layout<'_>,
         _renderer: &Renderer,
     ) -> Option<overlay::Element<'b, Message, Theme, Renderer>> {
-        None
+        if !self.notes.is_empty() {
+            // Extraer bounds del layout con offsets personalizados
+            Some(overlay::Element::new(Box::new(TemporizedIntroOverlay {
+                actual_time: self.actual_time.clone(),
+            })))
+        } else {
+            None
+        }
     }
 }
 
+// Implementación de métodos específicos para dibujar notas en el overlay
 impl<'a> AllNotesOverlay<'a> {
-    fn draw_note_in_overlay(
+    fn draw_note_in_overlay<Message, Theme, Renderer>(
         &self,
         note: &Note,
-        renderer: &mut impl iced::advanced::Renderer,
+        renderer: &mut Renderer,
         layout_bounds: Rectangle,
-    ) {
+        curret_time: &mut f32,
+    ) where
+        Renderer: iced::advanced::Renderer, // ← Bound necesario
+        Theme: Clone + Default,
+    {
         // Calcular el área disponible para las notas (con padding)
         let work_area = Rectangle {
             x: layout_bounds.x + 20.0,
@@ -116,23 +137,48 @@ impl<'a> AllNotesOverlay<'a> {
             height: layout_bounds.height - 40.0,
         };
 
-        // ✅ Calcular posición X basada en el tiempo
-        let time_ratio = if self.partiture_time > 0.0 {
-            note.start / self.partiture_time // Proporción del tiempo transcurrido
+        // TODO: Arreglar X de la nota
+        // Calcular posición X basada en el tiempo actual y el inicio de la nota
+        // La nota se mueve de izquierda a derecha según el tiempo actual
+        let time_ratio = if self.actual_time > 0.0 {
+            (self.actual_time - note.start) / note.duration.max(1.0)
         } else {
             0.0
         };
 
-        let padding_left = 100.0;
-        let note_x = work_area.x + (time_ratio * work_area.width) + padding_left;
+        // Limitar el ratio entre 0 y 1
+        let time_ratio = time_ratio.clamp(0.0, 1.0);
+        let note_x = work_area.x + (time_ratio * work_area.width);
 
+        // Solo dibujar la nota si está dentro del área visible
         if note_x < work_area.x || (note_x + 25.0) > work_area.x + work_area.width {
             return;
         }
 
         let note_y = self.calculate_note_y_in_staff(note, &layout_bounds);
 
-        self.draw_notes(renderer, note, note_x, note_y);
+        // Ejemplo de cómo crear un layout personalizado para dibujar una nota
+        let custom_node =
+            Node::new(Size::new(20.0, 20.0)).move_to(iced::Point::new(note_x, note_y)); // x, y: posición deseada
+
+        let custom_layout = Layout::new(&custom_node);
+
+        // Ahora puedes llamar a draw con tu layout personalizado
+        <Note as Overlay<Message, Theme, Renderer>>::draw(
+            note,
+            renderer,
+            &Theme::default(),
+            &Style::default(),
+            custom_layout,
+            Cursor::default(),
+        );
+
+        // Calculamos cuando dibujar el compás
+        *curret_time += note.duration;
+        if *curret_time > 4.0 {
+            Partiture::draw_compas(renderer, work_area, note_x);
+            *curret_time = 0.0;
+        }
     }
 
     fn note_name_from_pitch(pitch: u8) -> char {
@@ -164,67 +210,6 @@ impl<'a> AllNotesOverlay<'a> {
         };
 
         staff_area.y + note_pos * line_spacing
-    }
-
-    fn draw_notes(
-        &self,
-        renderer: &mut impl iced::advanced::Renderer,
-        note: &Note,
-        note_x: f32,
-        note_y: f32,
-    ) {
-        // Dibujamos la nota
-        // Actualizar posición de la nota
-        let black = self.get_note_color(&note);
-
-        // 1. Dibujar la cabeza de la nota
-        let note_head = Rectangle {
-            x: note_x - 5.0,
-            y: note_y - 1.0,
-            width: 15.0,
-            height: 15.0,
-        };
-
-        // 2. Dibujar la plica (stem)
-        let stem_rect = Rectangle {
-            x: note_x + 5.0,
-            y: note_y - 25.0,
-            width: 5.0,
-            height: 30.0,
-        };
-        renderer.fill_quad(
-            Quad {
-                bounds: note_head,
-                border: iced::Border {
-                    color: black,
-                    width: 0.0,
-                    radius: 4.0.into(),
-                },
-                shadow: Default::default(),
-            },
-            black,
-        );
-
-        renderer.fill_quad(
-            Quad {
-                bounds: stem_rect,
-                border: iced::Border {
-                    color: black,
-                    width: 0.0,
-                    radius: 0.0.into(),
-                },
-                shadow: Default::default(),
-            },
-            black,
-        );
-    }
-
-    fn get_note_color(&self, note: &Note) -> Color {
-        if note.is_active {
-            iced::Color::from_rgb(0.2, 0.8, 0.2) // Verde para notas activas
-        } else {
-            iced::Color::BLACK // Negro para notas normales
-        }
     }
 
     // fn update_notes_based_on_partiture(&mut self) {
