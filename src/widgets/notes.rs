@@ -6,10 +6,9 @@ use iced::{
         layout::Node,
         overlay::{self, Overlay},
         renderer::{self, Quad},
-        widget::Operation,
     },
     event::Status,
-    mouse::{Cursor, Interaction},
+    mouse::Cursor,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, from_str, from_value};
@@ -89,6 +88,7 @@ impl Note {
             width: 18.0,
             height: 18.0,
         };
+
         // Óvalo blanco con borde negro grueso
         renderer.fill_quad(
             Quad {
@@ -371,31 +371,6 @@ where
         _shell: &mut Shell<'_, Message>,
     ) -> Status {
         Status::Ignored
-    }
-
-    // Evento para manejar notas con el cursor arrastradolas o editandolas.
-    fn mouse_interaction(
-        &self,
-        layout: Layout<'_>,
-        cursor: Cursor,
-        _viewport: &Rectangle,
-        _renderer: &Renderer,
-    ) -> Interaction {
-        if cursor.is_over(layout.bounds()) {
-            Interaction::Pointer
-        } else {
-            Interaction::default()
-        }
-    }
-
-    // Evento para manejar el cursor
-    fn operate(
-        &mut self,
-        _layout: Layout<'_>,
-        _renderer: &Renderer,
-        _operation: &mut dyn Operation,
-    ) {
-        // Implementación vacía si no necesitas operaciones
     }
 
     // Verifica si el cursor está sobre el elemento

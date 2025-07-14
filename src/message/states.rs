@@ -1,5 +1,7 @@
 use std::time::Instant;
 
+use crate::models::settings::{CustomTheme, Difficulty};
+
 // Mensaje principal que engloba todos
 #[derive(Debug, Clone)]
 pub enum AppMessage {
@@ -13,6 +15,7 @@ pub enum AppState {
     MainMenu,
     Game,
     Settings,
+    Paused,
 }
 
 // Enumeración que define los mensajes(acciones) que la aplicación puede recibir
@@ -25,14 +28,15 @@ pub enum MainMenuMessage {
 
 #[derive(Debug, Clone)]
 pub enum GameMessage {
-    // PauseGame,
-    // RestartGame,
-    // PlayNote(u8),
+    PauseGame,
+    RestartGame,
+    ResumeGame,
     Tick(Instant),
 }
 
 #[derive(Debug, Clone)]
 pub enum SettingsMessage {
-    // ChangeTheme,
+    ChangeDifficulty(Difficulty),
+    ChangeTheme(CustomTheme),
     BackToMenu,
 }

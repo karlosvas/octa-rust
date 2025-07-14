@@ -1,33 +1,51 @@
-use crate::widgets::all_notes_overlay::AllNotesOverlay;
+use crate::message::states::AppMessage;
 use crate::widgets::notes::Note;
+use crate::{models::settings::CustomSettings, widgets::all_notes_overlay::AllNotesOverlay};
 use iced::{
-    Border, Color, Length, Rectangle, Size,
-    advanced::{Layout, Widget, layout::Node, overlay, renderer::Quad, widget::Tree},
+    Border, Color, Length, Point, Rectangle, Size, Vector,
+    advanced::{
+        self, Layout, Widget, layout::Node, overlay, renderer::Quad, renderer::Style, widget::Tree,
+    },
 };
 
 // Estructura de la partitura
 pub struct Partiture {
-    pub name: String,     // Nombre de la partitura
-    pub notes: Vec<Note>, // Notas de la partitura
-    pub time: f32,        // Tiempo total de la partitura
-    pub actual_time: f32, // Tiempo de inicio de la partitura
+    pub name: String,             // Nombre de la partitura
+    pub notes: Vec<Note>,         // Notas de la partitura
+    pub time: f32,                // Tiempo total de la partitura
+    pub elapsed: f32,             // Tiempo de actual de la partitura
+    pub settings: CustomSettings, // Configuración de la partitura
+}
+
+impl Default for Partiture {
+    fn default() -> Self {
+        Partiture {
+            name: String::new(),
+            notes: Vec::new(),
+            time: 0.0,
+            elapsed: 0.0,
+            settings: CustomSettings::default(),
+        }
+    }
 }
 
 // Declare the lifetime parameter for the impl block
 impl Partiture {
     // Constructor para crear una partitura con notas predefinidas
-    pub fn new(name: String, notes: Vec<Note>, time: f32, actual_time: f32) -> Self {
+    pub fn new(
+        name: String,
+        notes: Vec<Note>,
+        time: f32,
+        elapsed: f32,
+        settings: CustomSettings,
+    ) -> Self {
         Self {
-            name: name,
-            notes: notes,
-            time: time,
-            actual_time: actual_time,
+            name,
+            notes,
+            time: time * settings.difficulty.get_multiplier(),
+            elapsed: elapsed * settings.difficulty.get_multiplier(),
+            settings,
         }
-    }
-
-    // Añadir una nota a la partitura
-    pub fn add_note(&mut self, note: Note) {
-        self.notes.push(note);
     }
 
     // Dibujar el fondo de la partitura
@@ -36,18 +54,10 @@ impl Partiture {
         renderer: &mut impl iced::advanced::Renderer,
         bounds: iced::Rectangle,
     ) {
-        // Aplicar padding (equivalente a .padding(20))
-        let padded_bounds = Rectangle {
-            x: bounds.x + 20.0,
-            y: bounds.y + 20.0,
-            width: bounds.width - 40.0,
-            height: bounds.height - 40.0,
-        };
-
-        // Dibujar fondo (equivalente a .style(styles::custom_style::partiture))
+        // Dibujar fondo
         renderer.fill_quad(
             Quad {
-                bounds: padded_bounds,
+                bounds: bounds,
                 border: iced::Border {
                     color: iced::Color::from_rgb(0.9, 0.9, 0.9), // Color de fondo
                     width: 1.0,
@@ -65,30 +75,22 @@ impl Partiture {
         renderer: &mut impl iced::advanced::Renderer,
         bounds: iced::Rectangle,
     ) {
-        // Calcular área de trabajo (con padding)
-        let work_area = Rectangle {
-            x: bounds.x + 20.0,
-            y: bounds.y + 20.0,
-            width: bounds.width - 40.0,
-            height: bounds.height - 40.0,
-        };
+        // Calcular espaciado entre líneas
+        let line_spacing = (bounds.height - (5.0 * 2.0)) / 6.0; // 5 líneas, 4 espacios
+        let line_height = 2.0;
 
-        // Calcular espaciado entre líneas (equivalente a .spacing(20))
-        let line_spacing = (work_area.height - (5.0 * 2.0)) / 6.0; // 5 líneas, 4 espacios
-        let line_height = 2.0; // Height::Fixed(2.0)
-
-        // Dibujar 5 líneas del pentagrama (equivalente al for loop)
-        for i in 0..6 {
-            let y: f32 = work_area.y + (i as f32 * (line_height + line_spacing));
+        // Dibujar 5 líneas del pentagrama
+        for i in 0..=5 {
+            let y: f32 = bounds.y + (i as f32 * (line_height + line_spacing));
 
             let line_rect = Rectangle {
-                x: work_area.x,
+                x: bounds.x,
                 y: y,
-                width: work_area.width,
+                width: bounds.width,
                 height: line_height,
             };
 
-            // Dibujar línea (equivalente a .style(styles::custom_style::staff_line))
+            // Dibujar línea
             renderer.fill_quad(
                 iced::advanced::renderer::Quad {
                     bounds: line_rect,
@@ -99,7 +101,7 @@ impl Partiture {
                     },
                     shadow: Default::default(),
                 },
-                iced::Color::BLACK, // Color de las líneas del pentagrama
+                iced::Color::BLACK,
             );
         }
     }
@@ -114,9 +116,9 @@ impl Partiture {
         let offset = layout_bounds.width * width_percentage; // Si width=800, offset=20
         let line_rect = Rectangle {
             x: note_x - offset / 2.0, // Ajustar el offset para centrar la línea
-            y: layout_bounds.y + 20.0,
+            y: layout_bounds.y,       // Ajustar el Y para que esté en el pentagrama
             width: 2.0,
-            height: layout_bounds.height,
+            height: layout_bounds.height, // Altura del compás (ajustable)
         };
 
         renderer.fill_quad(
@@ -134,12 +136,13 @@ impl Partiture {
     }
 }
 
-impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Partiture
+impl<Theme, Renderer> Widget<AppMessage, Theme, Renderer> for Partiture
 where
-    Renderer: iced::advanced::Renderer + iced::advanced::text::Renderer,
+    Renderer: advanced::Renderer + advanced::text::Renderer,
     Theme: Clone + Default,
 {
-    fn size(&self) -> iced::Size<Length> {
+    // Aquí definimos cómo se ve el widget
+    fn size(&self) -> Size<Length> {
         Size::new(Length::Fill, Length::Fixed(400.0))
     }
 
@@ -151,16 +154,24 @@ where
         limits: &iced::advanced::layout::Limits,
     ) -> Node {
         let size = limits.resolve(Length::Fill, Length::Fixed(200.0), Size::ZERO);
-        Node::new(size)
+
+        // // Aplica el padding aquí
+        let padded_size: Size = Size::new(size.width - 40.0, size.height - 40.0);
+        let mut node: Node = Node::new(padded_size);
+
+        // Posiciona el nodo con el offset de padding
+        node = node.move_to(Point::new(20.0, 20.0));
+
+        node
     }
 
     // Aquí definimos cómo se dibuja el widget
     fn draw(
         &self,
-        _tree: &iced::advanced::widget::Tree,
+        _tree: &Tree,
         renderer: &mut Renderer,
         _theme: &Theme,
-        _style: &iced::advanced::renderer::Style,
+        _style: &Style,
         layout: Layout<'_>,
         _cursor: iced::mouse::Cursor,
         _viewport: &iced::Rectangle,
@@ -177,16 +188,14 @@ where
         _tree: &mut Tree,
         layout: Layout<'_>,
         _renderer: &Renderer,
-        translation: iced::Vector,
-    ) -> Option<overlay::Element<Message, Theme, Renderer>> {
+        translation: Vector,
+    ) -> Option<overlay::Element<AppMessage, Theme, Renderer>> {
         if !self.notes.is_empty() {
             // Extraer bounds del layout con offsets personalizados
             Some(overlay::Element::new(Box::new(AllNotesOverlay {
-                notes: &mut self.notes,            // Mutable reference
-                partiture_bounds: layout.bounds(), // Solo Rectangle
-                offset_x: translation.x,           // Translation + padding
-                offset_y: translation.y,           // Translation + padding
-                actual_time: self.actual_time,     // Referencia al tiempo de la partitura
+                partiture_bounds: layout.bounds(),                // Solo Rectangle
+                offset: Point::new(translation.x, translation.y), // Translation + padding
+                partiture: self, // Referencia al tiempo de la partitura
             })))
         } else {
             None

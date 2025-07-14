@@ -1,13 +1,24 @@
+use crate::models::settings::CustomTheme;
 use iced::{
     Background, Border, Color, Shadow, Theme, Vector,
-    widget::{button, container},
+    widget::{button, container::Style},
 };
 
 // Estilo personalizado para el fondo de la aplicación
-pub fn background(_theme: &Theme) -> container::Style {
-    container::Style {
-        text_color: Some(Color::WHITE),
-        background: Some(Background::Color(Color::from_rgb8(30, 30, 30))),
+pub fn background(_theme: &Theme, custom_theme: CustomTheme) -> Style {
+    let text_color: Color;
+    let background_color: Background;
+    if custom_theme == CustomTheme::Light {
+        text_color = Color::from_rgb8(80, 80, 80);
+        background_color = Background::Color(Color::from_rgb8(220, 220, 230));
+    } else {
+        text_color = Color::WHITE;
+        background_color = Background::Color(Color::from_rgb8(30, 30, 30));
+    }
+
+    Style {
+        text_color: Some(text_color),
+        background: Some(background_color),
         border: Border {
             color: Color::TRANSPARENT,
             ..Default::default()
