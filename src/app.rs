@@ -1,8 +1,12 @@
-use crate::message::states::{AppMessage, AppState, GameMessage, MainMenuMessage, SettingsMessage};
+use crate::message::states::{
+    AppMessage, AppState, GameMessage, MainMenuMessage, SelectionMessage, SettingsMessage,
+};
 use crate::models::settings::CustomSettings;
+use crate::utils::frecuency::get_frecuency;
 use crate::views::{
     game::game_view,
     main::main_menu_view,
+    selection::select_partiture_view,
     settings::{paused_view, settings_view},
 };
 use iced::{Element, Subscription, time::every};
@@ -22,9 +26,11 @@ macro_rules! asset_path {
 //  Estructura de la aplicación
 pub struct MyApp {
     state: AppState,
+    pub selected_partiture: Option<String>,
     pub actual_time: Option<Instant>,
     pub start_time: Option<Instant>,
     pub settings: CustomSettings,
+    pub finished: bool,
 }
 
 // Implementar Default para MyApp
@@ -32,9 +38,11 @@ impl Default for MyApp {
     fn default() -> Self {
         Self {
             state: AppState::MainMenu,
+            selected_partiture: None,
             actual_time: None,
             start_time: None,
             settings: MyApp::load_settings(),
+            finished: false,
         }
     }
 }
@@ -47,11 +55,8 @@ impl MyApp {
             // Manejar mensajes del menu
             AppMessage::MainMenu(msg) => match msg {
                 // Cambiar al estado de juego
-                MainMenuMessage::Play => {
-                    self.state = AppState::Game;
-                    let now: Instant = Instant::now();
-                    self.actual_time = Some(now);
-                    self.start_time = Some(now);
+                MainMenuMessage::SelectPartiture => {
+                    self.state = AppState::SlectionPartiture;
                 }
                 // Salir de la aplicación
                 MainMenuMessage::Exit => {
@@ -72,12 +77,17 @@ impl MyApp {
                     self.actual_time = Some(now);
                     self.start_time = Some(now);
                     self.state = AppState::Game;
+                    self.finished = false;
                 }
                 GameMessage::PauseGame => {
                     self.state = AppState::Paused;
                 }
                 GameMessage::ResumeGame => {
                     self.state = AppState::Game;
+                }
+                GameMessage::Finished => {
+                    self.finished = true;
+                    self.state = AppState::Paused;
                 }
             },
             // Manejar mensajes de configuración
@@ -93,6 +103,23 @@ impl MyApp {
                 }
                 SettingsMessage::BackToMenu => {
                     self.state = AppState::MainMenu;
+                    self.finished = false;
+                }
+            },
+            AppMessage::Selection(msg) => match msg {
+                // Manejar selección de partitura
+                SelectionMessage::StartGame(string) => {
+                    self.state = AppState::Game;
+                    let now: Instant = Instant::now();
+                    self.selected_partiture = Some(string);
+                    self.actual_time = Some(now);
+                    self.start_time = Some(now);
+                    self.finished = false;
+                    get_frecuency(); // Obtiene la frecuencia al iniciar el juego
+                }
+                SelectionMessage::BackToMenu => {
+                    self.state = AppState::MainMenu;
+                    self.finished = false;
                 }
             },
         }
@@ -102,9 +129,15 @@ impl MyApp {
     pub fn view(&self) -> Element<AppMessage> {
         match self.state {
             AppState::MainMenu => main_menu_view(&self.settings),
-            AppState::Game => game_view(self.start_time, self.actual_time, &self.settings),
+            AppState::SlectionPartiture => select_partiture_view(&self.settings),
+            AppState::Game => game_view(
+                self.selected_partiture.as_deref(),
+                self.start_time,
+                self.actual_time,
+                &self.settings,
+            ),
             AppState::Settings => settings_view(&self.settings),
-            AppState::Paused => paused_view(&self.settings),
+            AppState::Paused => paused_view(self.finished, &self.settings),
         }
     }
 

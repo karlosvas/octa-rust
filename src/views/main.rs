@@ -19,7 +19,7 @@ pub fn main_menu_view(settings: &CustomSettings) -> Element<AppMessage> {
 
     // Crear botones para el menú principal
     let button_play: Button<'_, AppMessage> = reusable::create_button(
-        AppMessage::MainMenu(MainMenuMessage::Play),
+        AppMessage::MainMenu(MainMenuMessage::SelectPartiture),
         Some("Play"),
         None,
     );
@@ -42,7 +42,7 @@ pub fn main_menu_view(settings: &CustomSettings) -> Element<AppMessage> {
 
     // Crear fila para el botón de configuración
     let settings_row: Row<'_, AppMessage> =
-        row![Space::with_width(Length::Fixed(400.0)), button_settings].spacing(10);
+        row![Space::with_width(Length::Fixed(350.0)), button_settings].spacing(10);
 
     // Crear columna principal del menú
     let main_column: Column<'_, AppMessage> =

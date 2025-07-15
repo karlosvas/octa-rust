@@ -1,16 +1,19 @@
 use crate::message::states::AppMessage;
+use crate::utils::frecuency::get_frecuency;
 use crate::widgets::notes::Note;
 use crate::{models::settings::CustomSettings, widgets::all_notes_overlay::AllNotesOverlay};
+use iced::advanced::{Clipboard, Shell};
+use iced::event::Status;
 use iced::{
     Border, Color, Length, Point, Rectangle, Size, Vector,
     advanced::{
         self, Layout, Widget, layout::Node, overlay, renderer::Quad, renderer::Style, widget::Tree,
     },
 };
+use iced::{Event, mouse};
 
 // Estructura de la partitura
 pub struct Partiture {
-    pub name: String,             // Nombre de la partitura
     pub notes: Vec<Note>,         // Notas de la partitura
     pub time: f32,                // Tiempo total de la partitura
     pub elapsed: f32,             // Tiempo de actual de la partitura
@@ -20,7 +23,6 @@ pub struct Partiture {
 impl Default for Partiture {
     fn default() -> Self {
         Partiture {
-            name: String::new(),
             notes: Vec::new(),
             time: 0.0,
             elapsed: 0.0,
@@ -32,17 +34,10 @@ impl Default for Partiture {
 // Declare the lifetime parameter for the impl block
 impl Partiture {
     // Constructor para crear una partitura con notas predefinidas
-    pub fn new(
-        name: String,
-        notes: Vec<Note>,
-        time: f32,
-        elapsed: f32,
-        settings: CustomSettings,
-    ) -> Self {
+    pub fn new(notes: Vec<Note>, time: f32, elapsed: f32, settings: CustomSettings) -> Self {
         Self {
-            name,
             notes,
-            time: time * settings.difficulty.get_multiplier(),
+            time,
             elapsed: elapsed * settings.difficulty.get_multiplier(),
             settings,
         }
@@ -180,6 +175,21 @@ where
         self.draw_partiture_background(renderer, layout.bounds());
         // Dibujar las 5 líneas del pentagrama (equivalente al column con rows)
         self.draw_staff_lines(renderer, layout.bounds());
+    }
+
+    // Aquí definimos cómo se manejan los eventos del widget
+    fn on_event(
+        &mut self,
+        _tree: &mut Tree,
+        _event: Event,
+        _layout: Layout<'_>,
+        _cursor: mouse::Cursor,
+        _renderer: &Renderer,
+        _clipboard: &mut dyn Clipboard,
+        _shell: &mut Shell<'_, AppMessage>,
+        _viewport: &iced::Rectangle,
+    ) -> Status {
+        Status::Ignored
     }
 
     // Elementos flotantes o superpuestos

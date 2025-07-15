@@ -1,22 +1,26 @@
-use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use rustfft::{FftPlanner, num_complex::Complex};
-use std::sync::mpsc;
+use cpal::{
+    Device, Host, Stream, StreamError, SupportedStreamConfig,
+    traits::{DeviceTrait, HostTrait, StreamTrait},
+};
+use rustfft::{Fft, FftPlanner, num_complex::Complex};
+use std::sync::{Arc, mpsc};
 
-#[warn(dead_code)]
 pub fn get_frecuency() {
+    print!("Listening for frequencies...\n");
+
     // Inicializa el host y el dispositivo de entrada
-    let host = cpal::default_host();
-    let device = host
+    let host: Host = cpal::default_host();
+    let device: Device = host
         .default_input_device()
         .expect("No input device available");
-    let config = device.default_input_config().unwrap();
-    let sample_rate = config.sample_rate().0 as f32;
+    let config: SupportedStreamConfig = device.default_input_config().unwrap();
+    let sample_rate: f32 = config.sample_rate().0 as f32;
 
     // Canal para enviar muestras
     let (tx, rx) = mpsc::channel();
 
     // Stream de entrada
-    let stream = device
+    let stream: Stream = device
         .build_input_stream(
             &config.into(),
             move |data: &[f32], _: &cpal::InputCallbackInfo| {
@@ -24,7 +28,7 @@ pub fn get_frecuency() {
                     tx.send(sample).ok();
                 }
             },
-            move |err| {
+            move |err: StreamError| {
                 eprintln!("Error: {:?}", err);
             },
             None, // Add the missing fourth argument for stream configuration
@@ -34,16 +38,16 @@ pub fn get_frecuency() {
     stream.play().unwrap();
 
     // Buffer para FFT
-    let mut samples = Vec::new();
-    let fft_size = 1024;
-    let mut planner = FftPlanner::new();
-    let fft = planner.plan_fft_forward(fft_size);
+    let mut samples: Vec<Complex<f32>> = Vec::new();
+    let fft_size: usize = 1024;
+    let mut planner: FftPlanner<f32> = FftPlanner::new();
+    let fft: Arc<dyn Fft<f32>> = planner.plan_fft_forward(fft_size);
 
     // Array de nombres de notas
-    let note_names = [
+    let note_names: [&'static str; 12] = [
         "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B",
     ];
-    let note_names_es = [
+    let note_names_es: [&'static str; 12] = [
         "Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si",
     ];
 
@@ -53,6 +57,7 @@ pub fn get_frecuency() {
     while samples.len() < fft_size {
         if let Ok(sample) = rx.recv() {
             samples.push(Complex::new(sample, 0.0));
+            println!("Sample received: {}", sample); // <-- Añade esto
         }
     }
 
@@ -61,12 +66,12 @@ pub fn get_frecuency() {
 
     // Calcular energía total del buffer
     let energy: f32 = samples.iter().map(|c| c.norm()).sum();
-    let energy_threshold = 50.0; // Puedes ajustar este valor si lo necesitas
+    let energy_threshold: f32 = 50.0; // Puedes ajustar este valor si lo necesitas
 
     if energy > energy_threshold {
         loop {
             // Encuentra la frecuencia dominante
-            let max_index = samples
+            let max_index: usize = samples
                 .iter()
                 .enumerate()
                 .max_by(|a, b| a.1.norm().partial_cmp(&b.1.norm()).unwrap())

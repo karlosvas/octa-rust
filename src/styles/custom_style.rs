@@ -1,11 +1,11 @@
 use crate::models::settings::CustomTheme;
 use iced::{
     Background, Border, Color, Shadow, Theme, Vector,
-    widget::{button, container::Style},
+    widget::{button, container, text},
 };
 
 // Estilo personalizado para el fondo de la aplicación
-pub fn background(_theme: &Theme, custom_theme: CustomTheme) -> Style {
+pub fn background(_theme: &Theme, custom_theme: CustomTheme) -> container::Style {
     let text_color: Color;
     let background_color: Background;
     if custom_theme == CustomTheme::Light {
@@ -16,7 +16,7 @@ pub fn background(_theme: &Theme, custom_theme: CustomTheme) -> Style {
         background_color = Background::Color(Color::from_rgb8(30, 30, 30));
     }
 
-    Style {
+    container::Style {
         text_color: Some(text_color),
         background: Some(background_color),
         border: Border {
@@ -42,6 +42,14 @@ pub fn button_settings(_theme: &Theme, _status: button::Status) -> button::Style
             radius: 5.0.into(),
         },
         shadow: Shadow::default(),
+    }
+}
+
+// Estilo personalizado para el título de la partitura
+pub fn partiture_title(_theme: &Theme) -> text::Style {
+    text::Style {
+        color: Some(Color::from_rgb(0.98, 0.10, 0.10)),
+        ..Default::default()
     }
 }
 

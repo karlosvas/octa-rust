@@ -9,8 +9,8 @@ use iced::{
 };
 
 pub struct TemporizedIntroOverlay {
-    pub elapsed: f32,
-    pub partiture_time: f32,
+    pub elapsed: f32,        // Tiempo transcurrido
+    pub partiture_time: f32, // Tiempo total de la partitura
 }
 
 impl<Theme, Renderer> Overlay<AppMessage, Theme, Renderer> for TemporizedIntroOverlay
@@ -76,7 +76,7 @@ where
     ) -> Status {
         if self.elapsed > self.partiture_time {
             // Enviar mensaje usando shell.publish()
-            shell.publish(AppMessage::Game(GameMessage::PauseGame));
+            shell.publish(AppMessage::Game(GameMessage::Finished));
             // Opcionalmente, puedes devolver Captured para indicar que el evento fue procesado
             Status::Captured
         } else {

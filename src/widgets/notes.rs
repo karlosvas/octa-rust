@@ -1,4 +1,4 @@
-use crate::utils::helper_json::point_serde;
+use crate::utils::helper_json;
 use iced::{
     Border, Color, Event, Point, Rectangle, Size,
     advanced::{
@@ -11,14 +11,12 @@ use iced::{
     mouse::Cursor,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, from_str, from_value};
-use std::{error, fs::read_to_string};
 
 // Notas, con implementacion para el trait Overlay y Serialize/Deserialize con serde_json
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Note {
     pub name: String, // Nombre de la nota (ej. "C4", "G#5")
-    #[serde(with = "point_serde")]
+    #[serde(with = "helper_json::point_serde")]
     pub position: Point, // Posición en el pentagrama
     pub start: f32,   // Tiempo de inicio en segundos
     pub pitch: u8,    // Número MIDI del tono
@@ -38,43 +36,6 @@ impl Note {
             pitch,
             duration,
             is_active: false,
-        }
-    }
-
-    // Cargar múltiples notas
-    pub fn load_notes_from_file(
-        file_path: &str,  // Ruta del archivo JSON
-        piece_name: &str, // Nombre de la pieza musical
-        hand: &str,       // Mano (izquierda o derecha)
-    ) -> Result<Vec<Note>, Box<dyn error::Error>> {
-        if file_path.is_empty() {
-            return Err("❌ Ruta del archivo no puede estar vacía".into());
-        }
-
-        let json_str = match read_to_string(file_path) {
-            Ok(content) => content,
-            Err(e) => return Err(format!("❌ Error al leer el archivo: {}", e).into()),
-        };
-
-        let data: Value = match from_str(&json_str) {
-            Ok(value) => value,
-            Err(e) => return Err(format!("❌ Error al parsear JSON: {}", e).into()),
-        };
-
-        // Buscar la pieza específica
-        if let Some(piece_data) = data.get(piece_name) {
-            if let Some(notes_array) = piece_data.get(hand) {
-                let notes: Vec<Note> = from_value(notes_array.clone())?;
-                Ok(notes)
-            } else {
-                Err(format!(
-                    "❌ Mano '{}' no encontrada en la pieza '{}'",
-                    hand, piece_name
-                )
-                .into())
-            }
-        } else {
-            Err(format!("❌ Pieza '{}' no encontrada en el archivo", piece_name).into())
         }
     }
 

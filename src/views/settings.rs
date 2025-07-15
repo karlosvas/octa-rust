@@ -12,7 +12,7 @@ use iced::{
 pub fn settings_view(settings: &CustomSettings) -> Element<AppMessage> {
     // Slider para cambiar el tema
     let theme_slider: Slider<'_, i32, AppMessage, Theme> =
-        Slider::new(0..=1, settings.theme.get_theme(), |val| {
+        Slider::new(0..=1, settings.theme.get_theme(), |val: i32| {
             AppMessage::Settings(SettingsMessage::ChangeTheme(
                 CustomTheme::get_theme_from_int(val),
             ))
@@ -24,7 +24,7 @@ pub fn settings_view(settings: &CustomSettings) -> Element<AppMessage> {
     let dificulty_slider: Slider<'_, f32, AppMessage, Theme> = Slider::new(
         0.5f32..=1.5f32,
         settings.difficulty.get_multiplier(),
-        |val| {
+        |val: f32| {
             AppMessage::Settings(SettingsMessage::ChangeDifficulty(
                 Difficulty::get_dificulty_from_f32(val),
             ))
@@ -51,13 +51,18 @@ pub fn settings_view(settings: &CustomSettings) -> Element<AppMessage> {
 }
 
 // Menú de pausa
-pub fn paused_view(settings: &CustomSettings) -> Element<AppMessage> {
-    // Crear botón para reanudar el juego
-    let resume_button: Button<'_, AppMessage> = reusable::create_button(
-        AppMessage::Game(GameMessage::ResumeGame),
-        Some("Resume Game"),
-        None,
-    );
+pub fn paused_view(finished: bool, settings: &CustomSettings) -> Element<AppMessage> {
+    let mut pause_column: Column<'_, AppMessage> = column![].spacing(20);
+
+    if !finished {
+        // Crear botón para reanudar el juego
+        let resume_button: Button<'_, AppMessage> = reusable::create_button(
+            AppMessage::Game(GameMessage::ResumeGame),
+            Some("Resume Game"),
+            None,
+        );
+        pause_column = pause_column.push(resume_button);
+    }
 
     // Crear botón para reiniciar el juego
     let restart_button: Button<'_, AppMessage> = reusable::create_button(
@@ -65,6 +70,7 @@ pub fn paused_view(settings: &CustomSettings) -> Element<AppMessage> {
         Some("Restart Game"),
         None,
     );
+    pause_column = pause_column.push(restart_button);
 
     // Crear botón para volver al menú principal
     let back_to_menu_button: Button<'_, AppMessage> = reusable::create_button(
@@ -72,11 +78,9 @@ pub fn paused_view(settings: &CustomSettings) -> Element<AppMessage> {
         Some("Back to Main Menu"),
         None,
     );
+    pause_column = pause_column.push(back_to_menu_button);
 
-    // Crear columna de pausa
-    let pause_column: Column<'_, AppMessage> =
-        column![resume_button, restart_button, back_to_menu_button,].spacing(20);
-
+    // Contenedor principal del menú de pausa
     Container::new(pause_column)
         .width(Length::Fill)
         .height(Length::Fill)

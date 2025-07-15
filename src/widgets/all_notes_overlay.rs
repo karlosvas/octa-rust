@@ -72,8 +72,7 @@ where
         if !self.partiture.notes.is_empty() {
             Some(overlay::Element::new(Box::new(TemporizedIntroOverlay {
                 elapsed: self.partiture.elapsed.clone(),
-                partiture_time: self.partiture.time.clone()
-                    + 5.0 * self.partiture.settings.difficulty.get_multiplier(),
+                partiture_time: self.partiture.time.clone() + self.partiture.settings.timer + 3.0, // Tiempo total de la partitura, mas intro mas 3 segundos de espera
             })))
         } else {
             None
