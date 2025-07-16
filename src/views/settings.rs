@@ -1,3 +1,6 @@
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use crate::message::states::{AppMessage, GameMessage, SettingsMessage};
 use crate::models::settings::{CustomSettings, CustomTheme, Difficulty};
 use crate::styles::custom_style;
@@ -51,10 +54,10 @@ pub fn settings_view(settings: &CustomSettings) -> Element<AppMessage> {
 }
 
 // Menú de pausa
-pub fn paused_view(finished: bool, settings: &CustomSettings) -> Element<AppMessage> {
+pub fn paused_view(finished: Arc<AtomicBool>, settings: &CustomSettings) -> Element<AppMessage> {
     let mut pause_column: Column<'_, AppMessage> = column![].spacing(20);
 
-    if !finished {
+    if !finished.load(Ordering::SeqCst) {
         // Crear botón para reanudar el juego
         let resume_button: Button<'_, AppMessage> = reusable::create_button(
             AppMessage::Game(GameMessage::ResumeGame),

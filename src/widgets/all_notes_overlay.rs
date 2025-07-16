@@ -82,6 +82,7 @@ where
 
 // Implementación de métodos específicos para dibujar notas en el overlay
 impl<'a> AllNotesOverlay<'a> {
+    // Método para dibujar una nota en el overlay
     fn draw_note_in_overlay<AppMessage, Theme, Renderer>(
         &self,
         note: &Note,
@@ -93,7 +94,7 @@ impl<'a> AllNotesOverlay<'a> {
         Theme: Clone + Default,
     {
         // Calcular el área disponible para las notas (con padding)
-        let work_area = Rectangle {
+        let work_area: Rectangle = Rectangle {
             x: layout_bounds.x + 120.0, // Padding izquierdo
             y: layout_bounds.y,
             width: layout_bounds.width - 120.0,
@@ -125,14 +126,14 @@ impl<'a> AllNotesOverlay<'a> {
             }
         }
 
-        let note_y: f32 = self.calculate_note_y_in_staff(note, &layout_bounds);
+        let note_y: f32 =
+            self.calculate_note_y_in_staff(note, &layout_bounds, &self.partiture.hand.clone());
 
         // Ejemplo de cómo crear un layout personalizado para dibujar una nota
-        let custom_node =
+        let custom_node: Node =
             Node::new(Size::new(20.0, 20.0)).move_to(iced::Point::new(note_x, note_y)); // x, y: posición deseada
 
-        let custom_layout = Layout::new(&custom_node);
-
+        let custom_layout: Layout<'_> = Layout::new(&custom_node);
         // Ahora puedes llamar a draw con tu layout personalizado
         <Note as Overlay<AppMessage, Theme, Renderer>>::draw(
             note,
@@ -144,36 +145,83 @@ impl<'a> AllNotesOverlay<'a> {
         );
     }
 
-    // Convierte el pitch de la nota a su nombre natural
-    fn note_name_from_pitch(pitch: u8) -> char {
-        // Notas naturales según su pitch mod 12
-        match pitch % 12 {
-            0 => 'C',
-            2 => 'D',
-            4 => 'E',
-            5 => 'F',
-            7 => 'G',
-            9 => 'A',
-            11 => 'B',
-            _ => 'C', // para sostenidos/bemoles toma la nota natural inferior más cercana
+    // Método para calcular la posición Y de la nota en el pentagrama
+    fn calculate_note_y_in_staff(&self, note: &Note, staff_area: &Rectangle, hand: &str) -> f32 {
+        if hand == "right" {
+            let line_spacing: f32 = staff_area.height / 6.0;
+
+            // Cada nota tiene una posición en el pentagrama según su nombre y octava
+            let pitch: u8 = note.pitch;
+            let staff_y_offset: f32 = staff_area.y + staff_area.height;
+
+            // Calcular cuántos "pasos" está por encima del Do4 (MIDI 60)
+            let steps_from_c4: f32 = match pitch {
+                60 => 0.8, // C4
+                61 => 0.8, // C#4 → misma línea que C4
+                62 => 1.6, // D4
+                63 => 1.6,
+                64 => 2.0, // E4
+                65 => 3.0, // F4
+                66 => 3.0,
+                67 => 4.0, // G4
+                68 => 4.0,
+                69 => 5.0, // A4
+                70 => 5.0,
+                71 => 6.0, // B4
+                72 => 7.0, // C5
+                73 => 7.0,
+                74 => 8.0,
+                75 => 8.0,
+                76 => 9.1,
+                77 => 10.1,
+                78 => 10.3,
+                79 => 10.5,
+                80 => 11.0,
+                81 => 11.0,
+                82 => 11.5,
+                83 => 11.5,
+                _ => 0.0,
+            };
+
+            // Cada paso son medio espacio de pentagrama (línea o espacio)
+            staff_y_offset - (steps_from_c4 as f32 * (line_spacing / 2.0)) - 5.0
+        } else {
+            let line_spacing: f32 = staff_area.height / 6.0;
+            let pitch: u8 = note.pitch;
+            let staff_y_offset: f32 = staff_area.y + staff_area.height;
+
+            // Calcular cuántos pasos está por encima de Fa2 (MIDI 41)
+            let steps_from_f2: f32 = match pitch {
+                36 => -5.0, // C2
+                37 => -5.0,
+                38 => -4.5,
+                39 => -4.5,
+                40 => -1.0, // E2
+                41 => 0.0,  // F2 (línea central en clave de fa)
+                42 => 0.0,
+                43 => 1.0, // G2
+                44 => 1.0,
+                45 => 2.0, // A2
+                46 => 2.0,
+                47 => 3.0, // B2
+                48 => 4.0, // C3
+                49 => 4.0,
+                50 => 5.0,
+                51 => 5.0,
+                52 => 6.0,
+                53 => 6.0,
+                54 => 7.0,
+                55 => 7.0,
+                56 => 8.0,
+                57 => 8.0,
+                58 => 9.0,
+                59 => 9.0,
+                60 => 10.0, // C4
+                _ => 0.0,
+            };
+
+            // Igual que antes: medio espacio por paso
+            staff_y_offset - (steps_from_f2 * (line_spacing / 2.0)) - 5.0
         }
-    }
-
-    // Calcula la posición Y de la nota en el pentagrama
-    fn calculate_note_y_in_staff(&self, note: &Note, staff_area: &Rectangle) -> f32 {
-        let line_spacing = staff_area.height / 6.0;
-
-        let note_pos: f32 = match Self::note_name_from_pitch(note.pitch) {
-            'C' => 5.30,
-            'D' => 5.10,
-            'E' => 4.80,
-            'F' => 4.30,
-            'G' => 3.80,
-            'A' => 3.30,
-            'B' => 2.80,
-            _ => 1.5,
-        };
-
-        staff_area.y + note_pos * line_spacing
     }
 }

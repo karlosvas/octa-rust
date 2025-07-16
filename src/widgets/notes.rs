@@ -1,13 +1,12 @@
-use crate::utils::helper_json;
 use iced::{
-    Border, Color, Event, Point, Rectangle, Size,
+    Border, Color, Point, Rectangle, Size,
     advanced::{
-        Clipboard, Layout, Renderer as RenderTrait, Shell,
+        Layout, Renderer as RenderTrait,
+        graphics::core::event::Status,
         layout::Node,
-        overlay::{self, Overlay},
+        overlay::Overlay,
         renderer::{self, Quad},
     },
-    event::Status,
     mouse::Cursor,
 };
 use serde::{Deserialize, Serialize};
@@ -15,27 +14,31 @@ use serde::{Deserialize, Serialize};
 // Notas, con implementacion para el trait Overlay y Serialize/Deserialize con serde_json
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Note {
-    pub name: String, // Nombre de la nota (ej. "C4", "G#5")
-    #[serde(with = "helper_json::point_serde")]
-    pub position: Point, // Posición en el pentagrama
-    pub start: f32,   // Tiempo de inicio en segundos
-    pub pitch: u8,    // Número MIDI del tono
+    pub name: String,  // Nombre de la nota (ej. "C4", "G#5")
+    pub start: f32,    // Tiempo de inicio en segundos
+    pub pitch: u8,     // Número MIDI del tono
     pub duration: f32, // Duración en segundos
+    #[serde(skip)]
     pub is_active: bool, // Si la nota está activa (sonando)
+    #[serde(skip)]
+    pub joined: bool, // Si la nota está unida a otra
+    #[serde(skip)]
+    pub last_position: Point, // Última posición de la nota
 }
 
 // Constructor para la nota musical
 impl Note {
     // Constructor para crear una nota con nombre, posición, tono y duración
     #[allow(dead_code)]
-    pub fn new(name: String, position: Point, pitch: u8, duration: f32) -> Self {
+    pub fn new(name: String, pitch: u8, duration: f32) -> Self {
         Self {
             name,
-            position,
             start: 0.0,
             pitch,
             duration,
             is_active: false,
+            joined: false,
+            last_position: Point::default(),
         }
     }
 
@@ -43,7 +46,7 @@ impl Note {
     fn draw_whole_note(&self, renderer: &mut impl RenderTrait, center: Point) {
         let (black, white) = self.get_note_colors();
 
-        let note_head = Rectangle {
+        let note_head: Rectangle = Rectangle {
             x: center.x - 7.0,
             y: center.y - 7.0,
             width: 18.0,
@@ -90,7 +93,7 @@ impl Note {
             Color::WHITE,
         );
 
-        // 2. Dibujar la plica (línea vertical)
+        // Dibujar la plica
         self.draw_stem(renderer, center, black);
     }
 
@@ -119,7 +122,7 @@ impl Note {
             black,
         );
 
-        // 2. Dibujar la plica (línea vertical)
+        // Dibujar la plica
         self.draw_stem(renderer, center, black);
     }
 
@@ -146,27 +149,11 @@ impl Note {
             },
             black,
         );
-        // Plica
+
+        // Dibujar la plica
         self.draw_stem(renderer, center, black);
-        // Bandera simple
-        let flag = Rectangle {
-            x: center.x + 8.0,
-            y: center.y - 25.0,
-            width: 15.0,
-            height: 6.0,
-        };
-        renderer.fill_quad(
-            Quad {
-                bounds: flag,
-                border: iced::Border {
-                    color: black,
-                    width: 0.0,
-                    radius: 3.0.into(),
-                },
-                shadow: Default::default(),
-            },
-            black,
-        );
+        // Dibujar la bandera
+        self.draw_flag(renderer, center, black);
     }
 
     // Dibujar semicorchea (0.25)
@@ -193,6 +180,11 @@ impl Note {
             },
             black,
         );
+
+        // Dibujar la plica
+        self.draw_stem(renderer, center, black);
+        // Dibujar la bandera
+        self.draw_flag(renderer, center, black);
     }
 
     // Dibujar fusa (0.125)
@@ -218,6 +210,11 @@ impl Note {
             },
             black,
         );
+
+        // Dibujar la plica
+        self.draw_stem(renderer, center, black);
+        // Dibujar la bandera
+        self.draw_flag(renderer, center, black);
     }
 
     // Dibujar semifusa (0.0625)
@@ -244,13 +241,34 @@ impl Note {
             },
             black,
         );
+
+        // Dibujar la plica
+        self.draw_stem(renderer, center, black);
+        // Dibujar la bandera
+        self.draw_flag(renderer, center, black);
     }
 
     // Dibujar plica vertical, negras y blancas
-    fn draw_stem(&self, renderer: &mut impl RenderTrait, center: Point, color: Color) {
+    fn draw_stem(&self, renderer: &mut impl RenderTrait, mut center: Point, color: Color) {
+        if self.pitch < 54 {
+            // Mano izquierda - plica hacia arriba
+            center.y -= 25.0;
+        } else if self.pitch < 60 {
+            // Mano izquierda - plica hacia abajo
+            center.y += 5.0;
+            center.x -= 10.0;
+        } else if self.pitch <= 71 {
+            // Mano derecha - plica hacia arriba
+            center.y -= 25.0;
+        } else {
+            // Mano derecha - plica hacia abajo
+            center.y += 5.0;
+            center.x -= 10.0;
+        }
+
         let stem_rect = Rectangle {
-            x: center.x + 5.0,  // Desde el borde derecho de la cabeza
-            y: center.y - 25.0, // Hacia arriba
+            x: center.x + 5.0, // Desde el borde derecho de la cabeza
+            y: center.y,       // Hacia arriba
             width: 5.0,
             height: 30.0,
         };
@@ -269,9 +287,79 @@ impl Note {
         );
     }
 
+    // Dibujar la bandera de las plicas
+    fn draw_flag(&self, renderer: &mut impl RenderTrait, mut center: Point, color: Color) {
+        if self.joined {
+            // Si la nota está unida, no dibujar bandera
+            // Dibujar línea desde center a last_position
+            let line_rect = Rectangle {
+                x: center.x.min(self.last_position.x),
+                y: center.y.min(self.last_position.y),
+                width: (center.x - self.last_position.x).abs().max(2.0), // mínimo grosor
+                height: (center.y - self.last_position.y).abs().max(2.0),
+            };
+            renderer.fill_quad(
+                Quad {
+                    bounds: line_rect,
+                    border: Border {
+                        color,
+                        width: 2.0,
+                        radius: 1.0.into(),
+                    },
+                    shadow: Default::default(),
+                },
+                color,
+            );
+            // Si la nota está unida, no dibujar bandera
+            return;
+        }
+
+        if self.pitch < 54 {
+            // Mano izquierda - plica hacia arriba
+            center.y -= 25.0;
+        } else if self.pitch < 60 {
+            // Mano izquierda - plica hacia abajo
+            center.y += 5.0;
+            center.x -= 10.0;
+        } else if self.pitch <= 71 {
+            // Mano derecha - plica hacia arriba
+            center.y -= 25.0;
+        } else {
+            // Mano derecha - plica hacia abajo
+            center.y += 29.0; // Ajustar la posición hacia abajo
+            center.x -= 10.0; // Ajustar la posición horizontal
+        }
+
+        // Bandera simple
+        let flag: Rectangle = Rectangle {
+            x: center.x + 8.0,
+            y: center.y,
+            width: 15.0,
+            height: 6.0,
+        };
+        renderer.fill_quad(
+            Quad {
+                bounds: flag,
+                border: Border {
+                    color: color,
+                    width: 5.0,
+                    radius: 2.0.into(),
+                },
+                shadow: Default::default(),
+            },
+            color,
+        );
+    }
+
     // Obtener colores según el estado de la nota
     fn get_note_colors(&self) -> (Color, Color) {
-        if self.is_active {
+        if self.joined {
+            // Verde para notas unidas: RGB(0.0, 0.5, 0.0)
+            (
+                Color::from_rgb(0.0, 0.5, 0.0),
+                Color::from_rgb(0.0, 0.5, 0.0),
+            )
+        } else if self.is_active {
             // Rojo cangrejo más vivo pero pastel: RGB(0.94, 0.35, 0.25)
             (
                 Color::from_rgb(0.94, 0.35, 0.25),
@@ -293,7 +381,7 @@ where
         Node::new(Size::ZERO)
     }
 
-    // Dibuja la nota musical en el renderer
+    // Dibujar la nota
     fn draw(
         &self,
         renderer: &mut Renderer,
@@ -319,32 +407,5 @@ where
             0.0625 => self.draw_sixty_fourth_note(renderer, note_head_center),
             _ => self.draw_quarter_note(renderer, note_head_center),
         }
-    }
-
-    // Evento para manejar interacciones, clics, drag & drop, etc.
-    fn on_event(
-        &mut self,
-        _event: Event,
-        _layout: Layout<'_>,
-        _cursor: Cursor,
-        _renderer: &Renderer,
-        _clipboard: &mut dyn Clipboard,
-        _shell: &mut Shell<'_, Message>,
-    ) -> Status {
-        Status::Ignored
-    }
-
-    // Verifica si el cursor está sobre el elemento
-    fn is_over(&self, layout: Layout<'_>, _renderer: &Renderer, cursor_position: Point) -> bool {
-        layout.bounds().contains(cursor_position)
-    }
-
-    // Método para manejar el overlay
-    fn overlay<'a>(
-        &'a mut self,
-        _layout: Layout<'_>,
-        _renderer: &Renderer,
-    ) -> Option<overlay::Element<'a, Message, Theme, Renderer>> {
-        None
     }
 }

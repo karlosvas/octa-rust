@@ -1,15 +1,22 @@
-use crate::message::states::{
-    AppMessage, AppState, GameMessage, MainMenuMessage, SelectionMessage, SettingsMessage,
-};
-use crate::models::settings::CustomSettings;
-use crate::utils::frecuency::get_frecuency;
-use crate::views::{
-    game::game_view,
-    main::main_menu_view,
-    selection::select_partiture_view,
-    settings::{paused_view, settings_view},
+use crate::{
+    message::states::{
+        AppMessage, AppState, GameMessage, MainMenuMessage, SelectionMessage, SettingsMessage,
+    },
+    models::settings::CustomSettings,
+    utils::{self, helper_json},
+    views::{
+        game::game_view,
+        main::main_menu_view,
+        selection::select_partiture_view,
+        settings::{paused_view, settings_view},
+    },
+    widgets::notes::Note,
 };
 use iced::{Element, Subscription, time::every};
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
 use std::{
     error, fs,
     time::{Duration, Instant},
@@ -30,7 +37,9 @@ pub struct MyApp {
     pub actual_time: Option<Instant>,
     pub start_time: Option<Instant>,
     pub settings: CustomSettings,
-    pub finished: bool,
+    pub finished: Arc<AtomicBool>,
+    pub notes_l_selected: Vec<Note>,
+    pub notes_r_selected: Vec<Note>,
 }
 
 // Implementar Default para MyApp
@@ -42,7 +51,9 @@ impl Default for MyApp {
             actual_time: None,
             start_time: None,
             settings: MyApp::load_settings(),
-            finished: false,
+            finished: Arc::new(AtomicBool::new(false)),
+            notes_l_selected: Vec::new(),
+            notes_r_selected: Vec::new(),
         }
     }
 }
@@ -71,13 +82,25 @@ impl MyApp {
             AppMessage::Game(msg) => match msg {
                 GameMessage::Tick(instant) => {
                     self.actual_time = Some(instant);
+                    let mut elapsed: f32 = self
+                        .actual_time
+                        .and_then(|current| {
+                            self.start_time
+                                .map(|start| current.duration_since(start).as_secs_f32())
+                        })
+                        .unwrap_or(0.0);
+
+                    elapsed -= self.settings.timer * 2.0;
+
+                    utils::utils::create_tempo_overlay(&mut self.notes_l_selected, elapsed);
+                    utils::utils::create_tempo_overlay(&mut self.notes_r_selected, elapsed);
                 }
                 GameMessage::RestartGame => {
                     let now: Instant = Instant::now();
                     self.actual_time = Some(now);
                     self.start_time = Some(now);
                     self.state = AppState::Game;
-                    self.finished = false;
+                    self.finished.store(false, Ordering::SeqCst);
                 }
                 GameMessage::PauseGame => {
                     self.state = AppState::Paused;
@@ -86,7 +109,7 @@ impl MyApp {
                     self.state = AppState::Game;
                 }
                 GameMessage::Finished => {
-                    self.finished = true;
+                    self.finished.store(true, Ordering::SeqCst);
                     self.state = AppState::Paused;
                 }
             },
@@ -103,23 +126,31 @@ impl MyApp {
                 }
                 SettingsMessage::BackToMenu => {
                     self.state = AppState::MainMenu;
-                    self.finished = false;
                 }
             },
+            // Manejar mensajes de selección de partitura
             AppMessage::Selection(msg) => match msg {
                 // Manejar selección de partitura
                 SelectionMessage::StartGame(string) => {
-                    self.state = AppState::Game;
                     let now: Instant = Instant::now();
-                    self.selected_partiture = Some(string);
+                    self.selected_partiture = Some(string.clone());
                     self.actual_time = Some(now);
                     self.start_time = Some(now);
-                    self.finished = false;
-                    get_frecuency(); // Obtiene la frecuencia al iniciar el juego
+                    self.finished.store(false, Ordering::SeqCst);
+                    let arr =
+                        helper_json::load_partiture(&asset_path!("notes.json")).unwrap_or_default();
+                    self.notes_l_selected =
+                        helper_json::load_notes_from_file(&arr, string.as_str(), "left")
+                            .unwrap_or_default();
+                    self.notes_r_selected =
+                        helper_json::load_notes_from_file(&arr, string.as_str(), "right")
+                            .unwrap_or_default();
+
+                    // Cambiamos el estado a el juego
+                    self.state = AppState::Game;
                 }
                 SelectionMessage::BackToMenu => {
                     self.state = AppState::MainMenu;
-                    self.finished = false;
                 }
             },
         }
@@ -135,9 +166,11 @@ impl MyApp {
                 self.start_time,
                 self.actual_time,
                 &self.settings,
+                &self.notes_l_selected,
+                &self.notes_r_selected,
             ),
             AppState::Settings => settings_view(&self.settings),
-            AppState::Paused => paused_view(self.finished, &self.settings),
+            AppState::Paused => paused_view(self.finished.clone(), &self.settings),
         }
     }
 

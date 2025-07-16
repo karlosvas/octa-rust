@@ -1,18 +1,15 @@
-use crate::message::states::AppMessage;
-use crate::styles::custom_style;
-use crate::utils::frecuency::get_frecuency;
-use crate::utils::helper_json;
-use crate::utils::utils;
-use crate::widgets::notes::Note;
-use crate::widgets::partiture::Partiture;
-use crate::{asset_path, models::settings::CustomSettings};
-use iced::widget::Text;
+use crate::{
+    message::states::AppMessage,
+    models::settings::CustomSettings,
+    styles::custom_style,
+    utils::utils,
+    widgets::{notes::Note, partiture::Partiture},
+};
 use iced::{
     Element, Length, Renderer, Theme,
     alignment::{Horizontal, Vertical},
-    widget::{Container, column},
+    widget::{Container, Text, column},
 };
-use serde_json::Value;
 use std::time::Instant;
 
 // Menú del juego
@@ -21,7 +18,10 @@ pub fn game_view<'a>(
     start_time: Option<Instant>,
     actual_time: Option<Instant>,
     settings: &'a CustomSettings,
+    notes_l: &'a Vec<Note>,
+    notes_r: &'a Vec<Note>,
 ) -> Element<'a, AppMessage> {
+    // Crear el título de la partitura
     let elapsed: f32 =
         if let (Some(start), Some(current)) = (start_time.as_ref(), actual_time.as_ref()) {
             current.duration_since(*start).as_secs_f32()
@@ -29,37 +29,24 @@ pub fn game_view<'a>(
             0.0
         };
 
-    // Cargar notas del archivo JSON
-    let arr: Result<Vec<Value>, String> = helper_json::load_partiture(&asset_path!("notes.json"));
-    let (notes_l, notes_r) = match &arr {
-        Ok(data) => (
-            helper_json::load_notes_from_file(data, partiture_name.unwrap_or("for-elise"), "left")
-                .unwrap_or_default(),
-            helper_json::load_notes_from_file(data, partiture_name.unwrap_or("for-elise"), "right")
-                .unwrap_or_default(),
-        ),
-        Err(e) => {
-            println!("Error cargando partitura: {}", e);
-            (Vec::new(), Vec::new())
-        }
-    };
-
     // Crear instancias de partituras con notas
-    let mut partiture_l: Partiture = Partiture::new(
-        Vec::new(),
+    let partiture_l: Partiture = Partiture::new(
+        notes_l.clone(),
         notes_l
             .iter()
             .fold(0.0, |acc: f32, note: &Note| acc + note.duration),
         elapsed,
         settings.clone(),
+        "left".to_string(),
     );
-    let mut partiture_r: Partiture = Partiture::new(
-        Vec::new(),
+    let partiture_r: Partiture = Partiture::new(
+        notes_r.clone(),
         notes_r
             .iter()
             .fold(0.0, |acc: f32, note: &Note| acc + note.duration),
         elapsed,
         settings.clone(),
+        "right".to_string(),
     );
 
     // Crear el título de la partitura
@@ -70,10 +57,6 @@ pub fn game_view<'a>(
         .align_y(Vertical::Center)
         .style(custom_style::partiture_title)
         .into();
-
-    // Añadir notas a las partituras y actualizar datos de tiempo
-    partiture_l.notes.extend(notes_l.iter().cloned());
-    partiture_r.notes.extend(notes_r.iter().cloned());
 
     // Crear elementos de partitura para la vista junto a las notas
     let mut partiture_r_overlay: Element<'_, AppMessage, Theme, Renderer> =

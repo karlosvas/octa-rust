@@ -2,27 +2,6 @@ use crate::widgets::notes::Note;
 use serde_json::{Value, from_str, from_value};
 use std::fs::read_to_string;
 
-// Helper para serializar y deserializar Notas
-pub mod point_serde {
-    use iced::Point;
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-    pub fn serialize<S>(point: &Point, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        (point.x, point.y).serialize(serializer)
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Point, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let (x, y) = <(f32, f32)>::deserialize(deserializer)?;
-        Ok(Point::new(x, y))
-    }
-}
-
 pub fn load_partiture(file_path: &str) -> Result<Vec<Value>, String> {
     if file_path.is_empty() {
         return Err("❌ Ruta del archivo no puede estar vacía".into());

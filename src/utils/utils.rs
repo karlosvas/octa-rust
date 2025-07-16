@@ -1,6 +1,9 @@
+use crate::app::MyApp;
 use crate::message::states::AppMessage;
+use crate::widgets::notes::Note;
 use crate::widgets::partiture::Partiture;
 use crate::{asset_path, utils::reusable::create_image};
+use iced::Point;
 use iced::{
     Element, Length, Padding,
     alignment::Vertical,
@@ -57,4 +60,31 @@ pub fn create_grand_staff(
                 }),
         )
         .into();
+}
+
+/// Crea un overlay de introducción temporizado para la partitura
+pub fn create_tempo_overlay(notes: &mut Vec<Note>, elapsed: f32) {
+    // Calcular cuando juntar las notas
+    let mut joined: u8 = 0;
+    // let mut current_position: Point;
+
+    for note in notes.iter_mut() {
+        note.is_active = true;
+        if note.start > elapsed {
+            note.is_active = false;
+        }
+        if note.duration == 0.5 {
+            joined += 1;
+            // current_position = note.position;
+            if joined == 2 {
+                // Si es la segunda vez entonces juntamos
+                note.joined = true;
+                // note.position = current_position;
+                joined = 0;
+            }
+        } else {
+            joined = 0;
+            note.joined = false;
+        }
+    }
 }
