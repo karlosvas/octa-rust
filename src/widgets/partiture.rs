@@ -1,11 +1,11 @@
-use crate::message::states::AppMessage;
-use crate::widgets::notes::Note;
-use crate::{models::settings::CustomSettings, widgets::all_notes_overlay::AllNotesOverlay};
+use crate::{
+    models::settings::CustomSettings,
+    widgets::{all_notes_overlay::AllNotesOverlay, notes::Note},
+};
 use iced::{
-    Border, Color, Length, Point, Rectangle, Size, Vector,
-    advanced::{
-        self, Layout, Widget, layout::Node, overlay, renderer::Quad, renderer::Style, widget::Tree,
-    },
+    Color, Pixels, Point, Rectangle, Renderer, Size, Theme,
+    mouse::Cursor,
+    widget::canvas::{Frame, Geometry, Path, Program},
 };
 
 // Estructura de la partitura
@@ -49,69 +49,34 @@ impl Partiture {
     }
 
     // Dibujar el fondo de la partitura
-    fn draw_partiture_background(
-        &self,
-        renderer: &mut impl iced::advanced::Renderer,
-        bounds: iced::Rectangle,
-    ) {
-        // Dibujar fondo
-        renderer.fill_quad(
-            Quad {
-                bounds: bounds,
-                border: iced::Border {
-                    color: iced::Color::from_rgb(0.9, 0.9, 0.9), // Color de fondo
-                    width: 1.0,
-                    radius: 8.0.into(),
-                },
-                shadow: Default::default(),
-            },
-            iced::Color::from_rgb(0.98, 0.98, 0.98), // Fondo blanco cremoso
+    fn draw_partiture_background(&self, frame: &mut Frame, bounds: Rectangle) {
+        frame.fill(
+            &Path::rectangle(bounds.position(), bounds.size()),
+            Color::WHITE,
         );
     }
 
     // Dibujar las líneas del pentagrama
-    fn draw_staff_lines(
-        &self,
-        renderer: &mut impl iced::advanced::Renderer,
-        bounds: iced::Rectangle,
-    ) {
-        // Calcular espaciado entre líneas
-        let line_spacing = (bounds.height - (5.0 * 2.0)) / 6.0; // 5 líneas, 4 espacios
-        let line_height = 2.0;
+    fn draw_staff_lines(&self, frame: &mut Frame, bounds: iced::Rectangle) {
+        // Cada línea tiene grosor 2.0, y hay 4 espacios entre ellas
+        // Para distribuirlo bien, usamos 6 secciones (5 líneas generan 6 huecos entre ellas)
+        let line_height: f32 = 2.0;
+        let line_spacing: f32 = (bounds.height - (5.0 * line_height)) / 5.0;
 
         // Dibujar 5 líneas del pentagrama
-        for i in 0..=5 {
+        for i in 0..5 {
             let y: f32 = bounds.y + (i as f32 * (line_height + line_spacing));
 
-            let line_rect = Rectangle {
-                x: bounds.x,
-                y: y,
-                width: bounds.width,
-                height: line_height,
-            };
-
-            // Dibujar línea
-            renderer.fill_quad(
-                iced::advanced::renderer::Quad {
-                    bounds: line_rect,
-                    border: iced::Border {
-                        color: iced::Color::BLACK,
-                        width: 0.0,
-                        radius: 0.0.into(),
-                    },
-                    shadow: Default::default(),
-                },
-                iced::Color::BLACK,
+            let linea: Path = Path::rectangle(
+                Point::new(bounds.x, y),
+                Size::new(bounds.width, line_height),
             );
+            frame.fill(&linea, Color::BLACK);
         }
     }
 
     // Dibujar compás en una posición específica
-    pub fn draw_compas(
-        renderer: &mut impl iced::advanced::Renderer,
-        layout_bounds: iced::Rectangle,
-        note_x: f32,
-    ) {
+    pub fn draw_compas(frame: &mut Frame, layout_bounds: iced::Rectangle, note_x: f32) {
         let width_percentage = 0.025; // 2.5% del ancho total (ajustable)
         let offset = layout_bounds.width * width_percentage; // Si width=800, offset=20
         let line_rect = Rectangle {
@@ -121,83 +86,64 @@ impl Partiture {
             height: layout_bounds.height, // Altura del compás (ajustable)
         };
 
-        renderer.fill_quad(
-            Quad {
-                bounds: line_rect,
-                border: Border {
-                    color: Color::BLACK,
-                    width: 0.0,
-                    radius: 0.0.into(),
-                },
-                shadow: Default::default(),
-            },
-            Color::BLACK,
-        );
+        let line_path: Path = Path::rectangle(line_rect.position(), line_rect.size());
+
+        frame.fill(&line_path, Color::BLACK);
+    }
+
+    fn draw_intro_overlay(&self, frame: &mut Frame, bounds: Rectangle) {
+        let elapsed: i32 = self.elapsed.floor() as i32;
+        if elapsed <= 2 {
+            // Dibuja el fondo semitransparente
+            frame.fill(
+                &Path::rectangle(bounds.position(), bounds.size()),
+                Color::from_rgba(0.0, 0.0, 0.0, 0.5),
+            );
+            // Dibuja el número grande en el centro
+            frame.fill_text(iced::widget::canvas::Text {
+                content: (3 - elapsed).to_string(),
+                position: Point::new(bounds.width / 2.0, bounds.height / 2.0),
+                color: Color::WHITE,
+                size: Pixels(120.0),
+                horizontal_alignment: iced::alignment::Horizontal::Center,
+                vertical_alignment: iced::alignment::Vertical::Center,
+                ..Default::default()
+            });
+        }
     }
 }
 
-impl<Theme, Renderer> Widget<AppMessage, Theme, Renderer> for Partiture
-where
-    Renderer: advanced::Renderer + advanced::text::Renderer,
-    Theme: Clone + Default,
-{
-    // Aquí definimos cómo se ve el widget
-    fn size(&self) -> Size<Length> {
-        Size::new(Length::Fill, Length::Fixed(400.0))
-    }
+impl<AppMessage> Program<AppMessage> for Partiture {
+    type State = ();
 
-    // Aquí definimos cómo se comporta el widget al recibir mensajes
-    fn layout(
-        &self,
-        _tree: &mut iced::advanced::widget::Tree,
-        _renderer: &Renderer,
-        limits: &iced::advanced::layout::Limits,
-    ) -> Node {
-        let size: Size = limits.resolve(Length::Fill, Length::Fixed(200.0), Size::ZERO);
-
-        // // Aplica el padding aquí
-        let padded_size: Size = Size::new(size.width - 40.0, size.height - 40.0);
-        let mut node: Node = Node::new(padded_size);
-
-        // Posiciona el nodo con el offset de padding
-        node = node.move_to(Point::new(20.0, 20.0));
-
-        node
-    }
-
-    // Aquí definimos cómo se dibuja el widget
     fn draw(
         &self,
-        _tree: &Tree,
-        renderer: &mut Renderer,
+        _state: &Self::State,
+        renderer: &Renderer,
         _theme: &Theme,
-        _style: &Style,
-        layout: Layout<'_>,
-        _cursor: iced::mouse::Cursor,
-        _viewport: &iced::Rectangle,
-    ) {
-        // Dibujar el fondo de la partitura (equivalente al container)
-        self.draw_partiture_background(renderer, layout.bounds());
-        // Dibujar las 5 líneas del pentagrama (equivalente al column con rows)
-        self.draw_staff_lines(renderer, layout.bounds());
-    }
+        bounds: Rectangle,
+        _cursor: Cursor,
+    ) -> Vec<Geometry> {
+        let mut frame: Frame<Renderer> = Frame::new(renderer, bounds.size());
+        let relative_bounds = Rectangle {
+            x: 0.0,
+            y: 0.0,
+            width: bounds.width,
+            height: bounds.height,
+        };
 
-    fn overlay(
-        &mut self,
-        _tree: &mut Tree,
-        layout: Layout<'_>,
-        _renderer: &Renderer,
-        translation: Vector,
-    ) -> Option<overlay::Element<AppMessage, Theme, Renderer>> {
-        if !self.notes.is_empty() {
-            // Extraer bounds del layout con offsets personalizados
-            Some(overlay::Element::new(Box::new(AllNotesOverlay {
-                partiture_bounds: layout.bounds(),                // Solo Rectangle
-                offset: Point::new(translation.x, translation.y), // Translation + padding
-                partiture: self, // Referencia al tiempo de la partitura
-            })))
-        } else {
-            None
-        }
+        // Dibujar el fondo de la partitura (equivalente al container)
+        self.draw_partiture_background(&mut frame, relative_bounds);
+        // Dibujar las 5 líneas del pentagrama (equivalente al column con rows)
+        self.draw_staff_lines(&mut frame, relative_bounds);
+
+        // Dibuja todas las notas usando AllNotesOverlay
+        let overlay: AllNotesOverlay<'_> = AllNotesOverlay { partiture: &self };
+        overlay.draw(&mut frame, relative_bounds);
+
+        self.draw_intro_overlay(&mut frame, relative_bounds);
+
+        // Retorna el frame como geometría
+        vec![frame.into_geometry()]
     }
 }

@@ -1,81 +1,28 @@
-use crate::{
-    message::states::AppMessage,
-    widgets::{intro_and_pause_overlay::TemporizedIntroOverlay, notes::Note, partiture::Partiture},
-};
-use iced::{
-    Point, Rectangle, Size,
-    advanced::{
-        self, Layout, Overlay,
-        layout::Node,
-        overlay::{self},
-        renderer::Style,
-    },
-    mouse::Cursor,
-};
+use crate::widgets::{notes::Note, partiture::Partiture};
+use iced::{Point, Rectangle, widget::canvas::Frame};
 
 // Estructura de overlay para mostrar todas las notas y compas de la partitura
 pub struct AllNotesOverlay<'a> {
-    pub partiture_bounds: Rectangle,  // Bounds de la partitura
-    pub offset: Point,                // Offset horizontal personalizado
-    pub partiture: &'a mut Partiture, // Referencia a la partitura
+    pub partiture: &'a Partiture, // Referencia a la partitura
 }
 
-impl<'a, Theme, Renderer> Overlay<AppMessage, Theme, Renderer> for AllNotesOverlay<'a>
-where
-    Renderer: advanced::Renderer + advanced::text::Renderer,
-    Theme: Clone + Default,
-{
-    fn layout(&mut self, _renderer: &Renderer, _bounds: Size) -> Node {
-        // Crear un nodo con tamaño y posición personalizada
-        let mut node: Node = Node::new(Size::new(
-            self.partiture_bounds.width,
-            self.partiture_bounds.height,
-        ));
-
-        // Aplicar offset personalizado si es necesario
-        node = node.move_to(Point::new(
-            self.partiture_bounds.x + self.offset.x,
-            self.partiture_bounds.y + self.offset.y,
-        ));
-
-        node
-    }
-
-    fn draw(
-        &self,
-        renderer: &mut Renderer,
-        _theme: &Theme,
-        _style: &iced::advanced::renderer::Style,
-        layout: Layout<'_>,
-        _cursor: iced::mouse::Cursor,
-    ) {
+impl<'a> AllNotesOverlay<'a> {
+    pub fn draw(&self, frame: &mut Frame, layout_bounds: Rectangle) {
         if self.partiture.elapsed < self.partiture.settings.timer {
             return;
         }
 
         let mut curret_time: f32 = 0.0;
-        for note in self.partiture.notes.iter() {
-            self.draw_note_in_overlay::<AppMessage, Theme, Renderer>(
-                note,
-                renderer,
-                layout.bounds(),
-                &mut curret_time,
-            );
-        }
-    }
+        let mut last_position: Point = Point::default();
 
-    fn overlay<'b>(
-        &'b mut self,
-        _layout: Layout<'_>,
-        _renderer: &Renderer,
-    ) -> Option<overlay::Element<'b, AppMessage, Theme, Renderer>> {
-        if !self.partiture.notes.is_empty() {
-            Some(overlay::Element::new(Box::new(TemporizedIntroOverlay {
-                elapsed: self.partiture.elapsed.clone(),
-                partiture_time: self.partiture.time.clone() + self.partiture.settings.timer + 3.0, // Tiempo total de la partitura, mas intro mas 3 segundos de espera
-            })))
-        } else {
-            None
+        for note in self.partiture.notes.iter() {
+            self.draw_note_in_overlay(
+                note,
+                frame,
+                layout_bounds,
+                &mut curret_time,
+                &mut last_position,
+            );
         }
     }
 }
@@ -83,16 +30,14 @@ where
 // Implementación de métodos específicos para dibujar notas en el overlay
 impl<'a> AllNotesOverlay<'a> {
     // Método para dibujar una nota en el overlay
-    fn draw_note_in_overlay<AppMessage, Theme, Renderer>(
+    fn draw_note_in_overlay(
         &self,
         note: &Note,
-        renderer: &mut Renderer,
+        frame: &mut Frame,
         layout_bounds: Rectangle,
         curret_time: &mut f32,
-    ) where
-        Renderer: iced::advanced::Renderer,
-        Theme: Clone + Default,
-    {
+        last_position: &mut Point,
+    ) {
         // Calcular el área disponible para las notas (con padding)
         let work_area: Rectangle = Rectangle {
             x: layout_bounds.x + 120.0, // Padding izquierdo
@@ -121,28 +66,48 @@ impl<'a> AllNotesOverlay<'a> {
             return;
         } else {
             if *curret_time > 4.0 {
-                Partiture::draw_compas(renderer, work_area, note_x);
+                Partiture::draw_compas(frame, work_area, note_x);
                 *curret_time = 0.0;
             }
         }
 
+        // Calculamos la posición en y
         let note_y: f32 =
             self.calculate_note_y_in_staff(note, &layout_bounds, &self.partiture.hand.clone());
 
-        // Ejemplo de cómo crear un layout personalizado para dibujar una nota
-        let custom_node: Node =
-            Node::new(Size::new(20.0, 20.0)).move_to(iced::Point::new(note_x, note_y)); // x, y: posición deseada
-
-        let custom_layout: Layout<'_> = Layout::new(&custom_node);
-        // Ahora puedes llamar a draw con tu layout personalizado
-        <Note as Overlay<AppMessage, Theme, Renderer>>::draw(
-            note,
-            renderer,
-            &Theme::default(),
-            &Style::default(),
-            custom_layout,
-            Cursor::default(),
+        // Obtenemos la posicion actual de la nota
+        let mut actual_position: Point = Point::new(note_x, note_y);
+        // Creamos la instancia de la nota que vamos a crear
+        let new_note: Note = Note::new(
+            note.name.clone(),
+            note.pitch.clone(),
+            note.duration.clone(),
+            note.joined.clone(),
+            last_position.clone(),
         );
+
+        // Dibujamos la nota creada en el layout
+        new_note.draw(frame, actual_position);
+
+        if new_note.pitch < 54 {
+            // Mano izquierda - plica hacia arriba
+            actual_position.y -= 25.0;
+        } else if new_note.pitch < 60 {
+            // Mano izquierda - plica hacia abajo
+            actual_position.y += 5.0;
+            actual_position.x -= 10.0;
+        } else if new_note.pitch <= 71 {
+            // Mano derecha - plica hacia arriba
+            actual_position.y -= 25.0;
+        } else {
+            // Mano derecha - plica hacia abajo
+            actual_position.y += 29.0; // Ajustar la posición hacia abajo
+            actual_position.x -= 10.0; // Ajustar la posición horizontal
+        }
+
+        let actual_position: Point = Point::new(actual_position.x + 8.0, actual_position.y);
+        // Obtenemos el punto actual y se lo asignamos a el último punto para tener la referencia del anterior a el
+        *last_position = actual_position;
     }
 
     // Método para calcular la posición Y de la nota en el pentagrama

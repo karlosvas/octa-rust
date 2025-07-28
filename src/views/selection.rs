@@ -1,6 +1,10 @@
-use crate::message::states::{AppMessage, SelectionMessage};
-use crate::utils::helper_json;
-use crate::{asset_path, models::settings::CustomSettings, styles::custom_style};
+use crate::{
+    asset_path,
+    message::states::{AppMessage, SelectionMessage},
+    models::settings::CustomSettings,
+    styles::custom_style,
+    utils::helper_json,
+};
 use iced::widget::{Button, Column};
 use iced::{
     Element, Length,

@@ -1,14 +1,17 @@
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
-
-use crate::message::states::{AppMessage, GameMessage, SettingsMessage};
-use crate::models::settings::{CustomSettings, CustomTheme, Difficulty};
-use crate::styles::custom_style;
-use crate::utils::reusable;
+use crate::{
+    message::states::{AppMessage, GameMessage, SettingsMessage},
+    models::settings::{CustomSettings, CustomTheme, Difficulty},
+    styles::custom_style,
+    utils::reusable,
+};
 use iced::{
     Element, Length, Theme,
     alignment::{Horizontal, Vertical},
     widget::{Button, Column, Container, Slider, column},
+};
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
 };
 
 // Vista de configuración

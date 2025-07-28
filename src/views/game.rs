@@ -6,9 +6,9 @@ use crate::{
     widgets::{notes::Note, partiture::Partiture},
 };
 use iced::{
-    Element, Length, Renderer, Theme,
+    Element, Length, Padding,
     alignment::{Horizontal, Vertical},
-    widget::{Container, Text, column},
+    widget::{Column, Container, Text, column},
 };
 use std::time::Instant;
 
@@ -18,8 +18,8 @@ pub fn game_view<'a>(
     start_time: Option<Instant>,
     actual_time: Option<Instant>,
     settings: &'a CustomSettings,
-    notes_l: &'a Vec<Note>,
-    notes_r: &'a Vec<Note>,
+    partiture_l: &'a Partiture,
+    partiture_r: &'a Partiture,
 ) -> Element<'a, AppMessage> {
     // Crear el título de la partitura
     let elapsed: f32 =
@@ -30,49 +30,55 @@ pub fn game_view<'a>(
         };
 
     // Crear instancias de partituras con notas
-    let partiture_l: Partiture = Partiture::new(
-        notes_l.clone(),
-        notes_l
-            .iter()
-            .fold(0.0, |acc: f32, note: &Note| acc + note.duration),
-        elapsed,
-        settings.clone(),
-        "left".to_string(),
-    );
     let partiture_r: Partiture = Partiture::new(
-        notes_r.clone(),
-        notes_r
+        partiture_r.notes.clone(),
+        partiture_r
+            .notes
             .iter()
             .fold(0.0, |acc: f32, note: &Note| acc + note.duration),
         elapsed,
         settings.clone(),
         "right".to_string(),
     );
+    let partiture_l: Partiture = Partiture::new(
+        partiture_l.notes.clone(),
+        partiture_l
+            .notes
+            .iter()
+            .fold(0.0, |acc: f32, note: &Note| acc + note.duration),
+        elapsed,
+        settings.clone(),
+        "left".to_string(),
+    );
 
     // Crear el título de la partitura
-    let title: Element<AppMessage> = Text::new(partiture_name.unwrap_or("for-elise"))
-        .size(40)
-        .width(Length::Fill)
-        .align_x(Horizontal::Center)
-        .align_y(Vertical::Center)
-        .style(custom_style::partiture_title)
-        .into();
-
-    // Crear elementos de partitura para la vista junto a las notas
-    let mut partiture_r_overlay: Element<'_, AppMessage, Theme, Renderer> =
-        Element::new(partiture_r);
-    let mut partiture_l_overlay: Element<'_, AppMessage, Theme, Renderer> =
-        Element::new(partiture_l);
+    let title: Element<AppMessage> = Container::new(
+        Text::new(partiture_name.unwrap_or("for-elise"))
+            .size(40)
+            .width(Length::Fill)
+            .align_x(Horizontal::Center)
+            .align_y(Vertical::Center)
+            .style(custom_style::partiture_title),
+    )
+    .padding(Padding {
+        top: 100.0,
+        right: 0.0,
+        bottom: 0.0,
+        left: 0.0,
+    })
+    .into();
 
     // Crear imagen de el gran pentagrama, calve de sol y clave de fa para ambas partituras
-    utils::create_grand_staff(&mut partiture_r_overlay, &mut partiture_l_overlay);
+    let (partiture_r_overlay, partiture_l_overlay) =
+        utils::create_grand_staff(partiture_r, partiture_l);
 
     // Crear la columna principal del juego
-    let game_column = column![
-        title,               // Título de la partitura
-        partiture_r_overlay, // Parte mano derecha de la partitura
-        partiture_l_overlay, // Parte mano izquierda de la partitura
+    let game_column: Column<AppMessage> = column![
+        title, // Título de la partitura
+        partiture_r_overlay,
+        partiture_l_overlay, // Parte mano derecha de la partitura
     ]
+    .height(Length::Fill)
     .spacing(20);
 
     // Contenedor principal del juego

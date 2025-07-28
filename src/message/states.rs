@@ -1,3 +1,5 @@
+use iced::Event;
+
 use crate::models::settings::{CustomTheme, Difficulty};
 use std::time::Instant;
 
@@ -8,6 +10,7 @@ pub enum AppMessage {
     Game(GameMessage),
     Settings(SettingsMessage),
     Selection(SelectionMessage),
+    Event(Event),
 }
 
 // Estados de la aplicación

@@ -47,3 +47,50 @@ pub fn load_notes_from_file(
     }
     Err(format!("❌ Pieza '{}' no encontrada en el archivo", piece_name).into())
 }
+
+pub fn sanitize_notes(notes_l: &mut Vec<Note>, notes_r: &mut Vec<Note>) -> (Vec<Note>, Vec<Note>) {
+    let mut calculate_join: f32 = 0.0;
+    let mut joined: bool = false;
+
+    for i in 0..notes_l.len() {
+        if notes_l[i].duration <= 0.5 {
+            calculate_join += notes_l[i].duration;
+            if calculate_join >= 1.0 {
+                calculate_join = 0.0;
+                joined = true;
+            }
+        } else {
+            calculate_join = 0.0;
+            joined = false;
+        }
+
+        if joined {
+            notes_l[i].joined = true;
+            if i > 0 {
+                notes_l[i - 1].joined = true;
+            }
+        }
+    }
+
+    for i in 0..notes_r.len() {
+        if notes_r[i].duration <= 0.5 {
+            calculate_join += notes_r[i].duration;
+            if calculate_join >= 1.0 {
+                calculate_join = 0.0;
+                joined = true;
+            }
+        } else {
+            calculate_join = 0.0;
+            joined = false;
+        }
+
+        if joined {
+            notes_r[i].joined = true;
+            if i > 0 {
+                notes_r[i - 1].joined = true;
+            }
+        }
+    }
+
+    (notes_l.clone(), notes_r.clone())
+}

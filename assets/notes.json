@@ -25,18 +25,12 @@
       ],
       "left": [
         { "name": "A2", "start": 0.0, "pitch": 45, "duration": 2.0 },
-        { "name": "E3", "start": 1.0, "pitch": 52, "duration": 0.0 },
-        { "name": "A3", "start": 2.0, "pitch": 57, "duration": 1.0 },
-        { "name": "E3", "start": 3.0, "pitch": 52, "duration": 1.0 },
-        { "name": "A3", "start": 4.0, "pitch": 57, "duration": 1.0 },
-        { "name": "C3", "start": 5.0, "pitch": 48, "duration": 1.0 },
-        { "name": "G3", "start": 6.0, "pitch": 55, "duration": 1.0 },
-        { "name": "E3", "start": 7.0, "pitch": 52, "duration": 1.0 },
-        { "name": "E3", "start": 8.0, "pitch": 52, "duration": 1.0 },
-        { "name": "B2", "start": 9.0, "pitch": 47, "duration": 1.0 },
-        { "name": "E3", "start": 10.0, "pitch": 52, "duration": 1.0 },
-        { "name": "G#3", "start": 11.0, "pitch": 56, "duration": 1.0 },
-        { "name": "B3", "start": 12.0, "pitch": 59, "duration": 1.0 }
+        { "name": "A3", "start": 2.0, "pitch": 57, "duration": 2.0 },
+        { "name": "C3", "start": 4.0, "pitch": 48, "duration": 2.0 },
+        { "name": "E3", "start": 6.0, "pitch": 52, "duration": 2.0 },
+        { "name": "A2", "start": 8.0, "pitch": 45, "duration": 2.0 },
+        { "name": "E3", "start": 10.0, "pitch": 52, "duration": 2.0 },
+        { "name": "A3", "start": 12.0, "pitch": 57, "duration": 2.0 }
       ]
     }
   },

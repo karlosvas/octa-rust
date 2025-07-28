@@ -1,13 +1,6 @@
 use iced::{
-    Border, Color, Point, Rectangle, Size,
-    advanced::{
-        Layout, Renderer as RenderTrait,
-        graphics::core::event::Status,
-        layout::Node,
-        overlay::Overlay,
-        renderer::{self, Quad},
-    },
-    mouse::Cursor,
+    Color, Point, Rectangle, Size,
+    widget::canvas::{Frame, Path, Stroke, Style},
 };
 use serde::{Deserialize, Serialize};
 
@@ -23,297 +16,191 @@ pub struct Note {
     #[serde(skip)]
     pub joined: bool, // Si la nota está unida a otra
     #[serde(skip)]
-    pub last_position: Point, // Última posición de la nota
+    pub last_position: Point, // Nota anterior
 }
 
 // Constructor para la nota musical
 impl Note {
     // Constructor para crear una nota con nombre, posición, tono y duración
     #[allow(dead_code)]
-    pub fn new(name: String, pitch: u8, duration: f32) -> Self {
+    pub fn new(name: String, pitch: u8, duration: f32, joined: bool, last_position: Point) -> Self {
         Self {
             name,
             start: 0.0,
             pitch,
             duration,
             is_active: false,
-            joined: false,
-            last_position: Point::default(),
+            joined,
+            last_position,
         }
     }
 
     // Dibujar redonda (4)
-    fn draw_whole_note(&self, renderer: &mut impl RenderTrait, center: Point) {
+    fn draw_whole_note(&self, frame: &mut Frame, center: Point) {
         let (black, white) = self.get_note_colors();
 
-        let note_head: Rectangle = Rectangle {
-            x: center.x - 7.0,
-            y: center.y - 7.0,
-            width: 18.0,
-            height: 18.0,
-        };
+        // Dibuja la cabeza de la nota como un círculo
+        let head: Path = Path::rectangle(center, Size::new(8.0, 5.0));
 
-        // Óvalo blanco con borde negro grueso
-        renderer.fill_quad(
-            Quad {
-                bounds: note_head,
-                border: iced::Border {
-                    color: black,
-                    width: 4.0,
-                    radius: 9.0.into(),
-                },
-                shadow: Default::default(),
+        // Relleno blanco
+        frame.fill(&head, white);
+        // Borde negro grueso
+        frame.stroke(
+            &head,
+            Stroke {
+                style: Style::Solid(black),
+                width: 4.0,
+                ..Stroke::default()
             },
-            white,
         );
     }
 
     // Dibujar blanca (2)
-    fn draw_half_note(&self, renderer: &mut impl RenderTrait, center: Point) {
-        let (black, _white) = self.get_note_colors();
+    fn draw_half_note(&self, frame: &mut Frame, center: Point) {
+        let (black, white) = self.get_note_colors();
 
-        let note_head = Rectangle {
-            x: center.x - 5.0,
-            y: center.y - 1.0,
-            width: 15.0,
-            height: 15.0,
-        };
-
-        // Fondo blanco
-        renderer.fill_quad(
-            Quad {
-                bounds: note_head,
-                border: iced::Border {
-                    color: black,
-                    width: 4.0,
-                    radius: 4.0.into(),
-                },
-                shadow: Default::default(),
+        // Dibuja la cabeza de la nota como un círculo
+        let head: Path = Path::rectangle(center, Size::new(8.0, 5.0));
+        // Relleno blanco
+        frame.fill(&head, white);
+        // Borde negro grueso
+        frame.stroke(
+            &head,
+            Stroke {
+                style: Style::Solid(black),
+                width: 4.0,
+                ..Stroke::default()
             },
-            Color::WHITE,
         );
 
         // Dibujar la plica
-        self.draw_stem(renderer, center, black);
+        self.draw_stem(frame, center, black);
     }
 
     // Dibujar negra (1)
-    fn draw_quarter_note(&self, renderer: &mut impl RenderTrait, center: Point) {
+    fn draw_quarter_note(&self, frame: &mut Frame, center: Point) {
         let (black, _white) = self.get_note_colors();
 
-        // 1. Dibujar la cabeza de la nota (óvalo NEGRO)
-        let note_head = Rectangle {
-            x: center.x - 5.0,
-            y: center.y,
-            width: 15.0,
-            height: 15.0,
-        };
-
-        renderer.fill_quad(
-            iced::advanced::renderer::Quad {
-                bounds: note_head,
-                border: iced::Border {
-                    color: black,
-                    width: 0.0,
-                    radius: 4.0.into(),
-                },
-                shadow: Default::default(),
+        // Dibuja la cabeza de la nota como un círculo
+        let head: Path = Path::rectangle(center, Size::new(10.0, 5.0));
+        // Relleno blanco
+        frame.fill(&head, black);
+        // Borde negro grueso
+        frame.stroke(
+            &head,
+            Stroke {
+                style: Style::Solid(black),
+                width: 4.0,
+                ..Stroke::default()
             },
-            black,
         );
 
         // Dibujar la plica
-        self.draw_stem(renderer, center, black);
+        self.draw_stem(frame, center, black);
     }
 
     // Dibujar corchea (0.5)
-    fn draw_eighth_note(&self, renderer: &mut impl RenderTrait, center: Point) {
+    fn draw_eighth_note(&self, frame: &mut Frame, center: Point) {
         let (black, _white) = self.get_note_colors();
 
-        let note_head: Rectangle = Rectangle {
-            x: center.x - 5.0,
-            y: center.y,
-            width: 15.0,
-            height: 15.0,
-        };
-        // Óvalo negro
-        renderer.fill_quad(
-            Quad {
-                bounds: note_head,
-                border: iced::Border {
-                    color: black,
-                    width: 0.0,
-                    radius: 4.0.into(),
-                },
-                shadow: Default::default(),
+        // Dibuja la cabeza de la nota como un círculo
+        let head: Path = Path::rectangle(center, Size::new(10.0, 5.0));
+
+        // Relleno negro
+        frame.fill(&head, black);
+        // Borde negro grueso
+        frame.stroke(
+            &head,
+            Stroke {
+                style: Style::Solid(black),
+                width: 4.0,
+                ..Stroke::default()
             },
-            black,
         );
 
         // Dibujar la plica
-        self.draw_stem(renderer, center, black);
+        self.draw_stem(frame, center, black);
         // Dibujar la bandera
-        self.draw_flag(renderer, center, black);
+        self.draw_flag(frame, center, black);
     }
 
     // Dibujar semicorchea (0.25)
-    fn draw_sixteenth_note(&self, renderer: &mut impl RenderTrait, center: Point) {
-        self.draw_eighth_note(renderer, center);
+    fn draw_sixteenth_note(&self, frame: &mut Frame, center: Point) {
+        self.draw_eighth_note(frame, center);
         let (black, _white) = self.get_note_colors();
 
-        let flag2 = Rectangle {
-            x: center.x + 10.0,
-            y: center.y - 18.0,
-            width: 12.0,
-            height: 6.0,
-        };
-
-        renderer.fill_quad(
-            Quad {
-                bounds: flag2,
-                border: Border {
-                    color: black,
-                    width: 0.0,
-                    radius: 3.0.into(),
-                },
-                shadow: Default::default(),
-            },
-            black,
-        );
+        let head: Path = Path::rectangle(center, Size::new(6.0, 3.0));
+        frame.fill(&head, black);
 
         // Dibujar la plica
-        self.draw_stem(renderer, center, black);
+        self.draw_stem(frame, center, black);
         // Dibujar la bandera
-        self.draw_flag(renderer, center, black);
+        self.draw_flag(frame, center, black);
     }
 
     // Dibujar fusa (0.125)
-    fn draw_thirty_second_note(&self, renderer: &mut impl RenderTrait, center: Point) {
+    fn draw_thirty_second_note(&self, frame: &mut Frame, center: Point) {
         let (black, _white) = self.get_note_colors();
 
-        self.draw_sixteenth_note(renderer, center);
-        let flag3 = Rectangle {
-            x: center.x + 10.0,
-            y: center.y - 11.0,
-            width: 12.0,
-            height: 6.0,
-        };
-        renderer.fill_quad(
-            Quad {
-                bounds: flag3,
-                border: iced::Border {
-                    color: black,
-                    width: 0.0,
-                    radius: 3.0.into(),
-                },
-                shadow: Default::default(),
-            },
-            black,
-        );
+        self.draw_sixteenth_note(frame, center);
+
+        let head: Path = Path::rectangle(center, Size::new(2.0, 2.0));
+        frame.fill(&head, black);
 
         // Dibujar la plica
-        self.draw_stem(renderer, center, black);
+        self.draw_stem(frame, center, black);
         // Dibujar la bandera
-        self.draw_flag(renderer, center, black);
+        self.draw_flag(frame, center, black);
     }
 
     // Dibujar semifusa (0.0625)
-    fn draw_sixty_fourth_note(&self, renderer: &mut impl RenderTrait, center: Point) {
+    fn draw_sixty_fourth_note(&self, frame: &mut Frame, center: Point) {
         let (black, _white) = self.get_note_colors();
 
-        self.draw_thirty_second_note(renderer, center);
-        // Cuarta bandera
-        let flag4 = Rectangle {
-            x: center.x + 10.0,
-            y: center.y - 4.0,
-            width: 12.0,
-            height: 6.0,
-        };
-        renderer.fill_quad(
-            Quad {
-                bounds: flag4,
-                border: Border {
-                    color: black,
-                    width: 0.0,
-                    radius: 3.0.into(),
-                },
-                shadow: Default::default(),
-            },
-            black,
-        );
+        self.draw_thirty_second_note(frame, center);
+        let head: Path = Path::rectangle(center, Size::new(2.0, 2.0));
+        frame.fill(&head, black);
 
         // Dibujar la plica
-        self.draw_stem(renderer, center, black);
+        self.draw_stem(frame, center, black);
         // Dibujar la bandera
-        self.draw_flag(renderer, center, black);
+        self.draw_flag(frame, center, black);
     }
 
-    // Dibujar plica vertical, negras y blancas
-    fn draw_stem(&self, renderer: &mut impl RenderTrait, mut center: Point, color: Color) {
+    // // Dibujar plica vertical, negras y blancas
+    fn draw_stem(&self, frame: &mut Frame, mut center: Point, color: Color) {
         if self.pitch < 54 {
             // Mano izquierda - plica hacia arriba
             center.y -= 25.0;
         } else if self.pitch < 60 {
             // Mano izquierda - plica hacia abajo
             center.y += 5.0;
-            center.x -= 10.0;
+            center.x -= 9.0;
         } else if self.pitch <= 71 {
             // Mano derecha - plica hacia arriba
             center.y -= 25.0;
         } else {
             // Mano derecha - plica hacia abajo
             center.y += 5.0;
-            center.x -= 10.0;
+            center.x -= 9.0;
         }
 
         let stem_rect = Rectangle {
-            x: center.x + 5.0, // Desde el borde derecho de la cabeza
+            x: center.x + 7.0, // Desde el borde derecho de la cabeza
             y: center.y,       // Hacia arriba
             width: 5.0,
             height: 30.0,
         };
 
-        renderer.fill_quad(
-            Quad {
-                bounds: stem_rect,
-                border: iced::Border {
-                    color,
-                    width: 0.0,
-                    radius: 0.0.into(),
-                },
-                shadow: Default::default(),
-            },
-            color,
+        let path = Path::rectangle(
+            Point::new(stem_rect.x, stem_rect.y),
+            Size::new(stem_rect.width, stem_rect.height),
         );
+        frame.fill(&path, color);
     }
 
-    // Dibujar la bandera de las plicas
-    fn draw_flag(&self, renderer: &mut impl RenderTrait, mut center: Point, color: Color) {
-        if self.joined {
-            // Si la nota está unida, no dibujar bandera
-            // Dibujar línea desde center a last_position
-            let line_rect = Rectangle {
-                x: center.x.min(self.last_position.x),
-                y: center.y.min(self.last_position.y),
-                width: (center.x - self.last_position.x).abs().max(2.0), // mínimo grosor
-                height: (center.y - self.last_position.y).abs().max(2.0),
-            };
-            renderer.fill_quad(
-                Quad {
-                    bounds: line_rect,
-                    border: Border {
-                        color,
-                        width: 2.0,
-                        radius: 1.0.into(),
-                    },
-                    shadow: Default::default(),
-                },
-                color,
-            );
-            // Si la nota está unida, no dibujar bandera
-            return;
-        }
-
+    // // Dibujar la bandera de las plicas
+    fn draw_flag(&self, frame: &mut Frame, mut center: Point, color: Color) {
         if self.pitch < 54 {
             // Mano izquierda - plica hacia arriba
             center.y -= 25.0;
@@ -330,6 +217,24 @@ impl Note {
             center.x -= 10.0; // Ajustar la posición horizontal
         }
 
+        let actual_position: Point = Point::new(center.x + 8.0, center.y);
+        if self.joined {
+            if self.last_position != Point::default() {
+                let from: Point = Point::new(actual_position.x, actual_position.y);
+                let to: Point = Point::new(self.last_position.x, self.last_position.y);
+
+                let line: Path = Path::line(from, to);
+                frame.stroke(
+                    &line,
+                    Stroke {
+                        width: 5.0,
+                        ..Stroke::default()
+                    },
+                );
+            }
+            return;
+        }
+
         // Bandera simple
         let flag: Rectangle = Rectangle {
             x: center.x + 8.0,
@@ -337,29 +242,18 @@ impl Note {
             width: 15.0,
             height: 6.0,
         };
-        renderer.fill_quad(
-            Quad {
-                bounds: flag,
-                border: Border {
-                    color: color,
-                    width: 5.0,
-                    radius: 2.0.into(),
-                },
-                shadow: Default::default(),
-            },
-            color,
+
+        let path = Path::rectangle(
+            Point::new(flag.x, flag.y),
+            Size::new(flag.width, flag.height),
         );
+
+        frame.fill(&path, color);
     }
 
-    // Obtener colores según el estado de la nota
+    // // Obtener colores según el estado de la nota
     fn get_note_colors(&self) -> (Color, Color) {
-        if self.joined {
-            // Verde para notas unidas: RGB(0.0, 0.5, 0.0)
-            (
-                Color::from_rgb(0.0, 0.5, 0.0),
-                Color::from_rgb(0.0, 0.5, 0.0),
-            )
-        } else if self.is_active {
+        if self.is_active {
             // Rojo cangrejo más vivo pero pastel: RGB(0.94, 0.35, 0.25)
             (
                 Color::from_rgb(0.94, 0.35, 0.25),
@@ -369,43 +263,18 @@ impl Note {
             (Color::BLACK, Color::WHITE)
         }
     }
-}
-
-// Implementación del trait de Overlay para la nota musical
-impl<Message, Theme, Renderer> Overlay<Message, Theme, Renderer> for Note
-where
-    Renderer: RenderTrait,
-{
-    // Define el tamaño y la posición del elemento
-    fn layout(&mut self, _renderer: &Renderer, _bounds: Size) -> Node {
-        Node::new(Size::ZERO)
-    }
 
     // Dibujar la nota
-    fn draw(
-        &self,
-        renderer: &mut Renderer,
-        _theme: &Theme,
-        _style: &renderer::Style,
-        layout: Layout<'_>,
-        _cursor: Cursor,
-    ) {
-        // Obtenemos la posicion (x,y)
-        let bounds: Rectangle = layout.bounds();
-        let note_head_center = Point::new(
-            bounds.x, // Un poco hacia la derecha del inicio
-            bounds.y, // Centro vertical
-        );
-
+    pub fn draw(&self, frame: &mut Frame, center: Point) {
         match self.duration {
-            4.0 => self.draw_whole_note(renderer, note_head_center),
-            2.0 => self.draw_half_note(renderer, note_head_center),
-            1.0 => self.draw_quarter_note(renderer, note_head_center),
-            0.5 => self.draw_eighth_note(renderer, note_head_center),
-            0.25 => self.draw_sixteenth_note(renderer, note_head_center),
-            0.125 => self.draw_thirty_second_note(renderer, note_head_center),
-            0.0625 => self.draw_sixty_fourth_note(renderer, note_head_center),
-            _ => self.draw_quarter_note(renderer, note_head_center),
+            4.0 => self.draw_whole_note(frame, center),
+            2.0 => self.draw_half_note(frame, center),
+            1.0 => self.draw_quarter_note(frame, center),
+            0.5 => self.draw_eighth_note(frame, center),
+            0.25 => self.draw_sixteenth_note(frame, center),
+            0.125 => self.draw_thirty_second_note(frame, center),
+            0.0625 => self.draw_sixty_fourth_note(frame, center),
+            _ => self.draw_quarter_note(frame, center),
         }
     }
 }

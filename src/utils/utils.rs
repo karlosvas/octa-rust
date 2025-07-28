@@ -1,65 +1,90 @@
-use crate::app::MyApp;
-use crate::message::states::AppMessage;
-use crate::widgets::notes::Note;
-use crate::widgets::partiture::Partiture;
-use crate::{asset_path, utils::reusable::create_image};
-use iced::Point;
-use iced::{
-    Element, Length, Padding,
-    alignment::Vertical,
-    widget::{Container, Image, Stack},
+use crate::{
+    asset_path,
+    message::states::AppMessage,
+    utils::reusable::create_image,
+    widgets::{notes::Note, partiture::Partiture},
 };
-use std::mem::replace;
+use iced::{
+    Length, Padding,
+    widget::{Canvas, Container, Stack},
+};
 
 pub fn create_grand_staff(
-    partiture_r_overlay: &mut Element<AppMessage>,
-    partiture_l_overlay: &mut Element<AppMessage>,
+    partiture_r: Partiture,
+    partiture_l: Partiture,
+) -> (
+    Container<'static, AppMessage>,
+    Container<'static, AppMessage>,
 ) {
-    // Primero extraemos el valor original usando std::mem::replace
-    let original_r: Element<'_, AppMessage> =
-        replace(partiture_r_overlay, Element::new(Partiture::default()));
+    let fixed_height_staff: f32 = 200.0;
 
-    // Luego hacemos lo mismo con la partitura izquierda
-    let original_l: Element<'_, AppMessage> =
-        replace(partiture_l_overlay, Element::new(Partiture::default()));
+    let original_r = Container::new(
+        Canvas::new(partiture_r)
+            .width(Length::Fill)
+            .height(Length::Fixed(fixed_height_staff)),
+    )
+    .width(Length::Fill)
+    .height(Length::Fixed(fixed_height_staff))
+    .padding(Padding {
+        top: 0.0,
+        right: 20.0,
+        bottom: 0.0,
+        left: 10.0,
+    });
 
-    // Imagenes de clave de sol y fa
-    let partitura_r_img: Image = create_image(&asset_path!("clave-de-sol.png"), 200.0, 80.0);
-    let partitura_l_img: Image = create_image(&asset_path!("clave-de-fa.png"), 200.0, 90.0);
+    let original_l = Container::new(
+        Canvas::new(partiture_l)
+            .width(Length::Fill)
+            .height(Length::Fixed(fixed_height_staff)),
+    )
+    .width(Length::Fill)
+    .height(Length::Fixed(fixed_height_staff))
+    .padding(Padding {
+        top: 0.0,
+        right: 20.0,
+        bottom: 0.0,
+        left: 10.0,
+    });
 
-    // Usamos Stack para superponer las imágenes sobre las partituras cambiando el valor de la referencia mutable
-    *partiture_r_overlay = Stack::new()
-        .height(Length::Fixed(250.0))
-        .push(original_r) // Usamos el valor original
-        .push(
-            Container::new(partitura_r_img)
-                .height(Length::Fill)
-                .align_y(Vertical::Center)
-                .padding(Padding {
-                    top: 10.0,
-                    right: 20.0,
-                    bottom: 0.0,
-                    left: 20.0,
-                }),
-        )
-        .into();
+    let partitura_r_img =
+        Container::new(create_image(&asset_path!("clave-de-sol.png"), 180.0, 80.0))
+            .height(Length::Fixed(fixed_height_staff))
+            .padding(Padding {
+                top: 10.0,
+                right: 20.0,
+                bottom: 0.0,
+                left: 20.0,
+            });
 
-    // Usamos Stack para superponer las imágenes sobre las partituras cambiando el valor de la referencia mutable
-    *partiture_l_overlay = Stack::new()
-        .height(Length::Fixed(250.0))
-        .push(original_l) // Usamos el valor original
-        .push(
-            Container::new(partitura_l_img)
-                .height(Length::Fill)
-                .align_y(Vertical::Center)
-                .padding(Padding {
-                    top: 0.0,
-                    right: 20.0,
-                    bottom: 35.0,
-                    left: 20.0,
-                }),
-        )
-        .into();
+    let partitura_l_img =
+        Container::new(create_image(&asset_path!("clave-de-fa.png"), 150.0, 80.0))
+            .height(Length::Fixed(fixed_height_staff))
+            .padding(Padding {
+                top: 20.0,
+                right: 20.0,
+                bottom: 0.0,
+                left: 20.0,
+            });
+
+    let partiture_r_overlay = Container::new(
+        Stack::new()
+            .push(original_r)
+            .push(partitura_r_img)
+            .height(Length::Fixed(fixed_height_staff)),
+    )
+    .height(Length::Fixed(fixed_height_staff))
+    .width(Length::Fill);
+
+    let partiture_l_overlay = Container::new(
+        Stack::new()
+            .push(original_l)
+            .push(partitura_l_img)
+            .height(Length::Fixed(fixed_height_staff)),
+    )
+    .height(Length::Fixed(fixed_height_staff))
+    .width(Length::Fill);
+
+    (partiture_r_overlay, partiture_l_overlay)
 }
 
 /// Crea un overlay de introducción temporizado para la partitura

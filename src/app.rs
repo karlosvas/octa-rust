@@ -10,15 +10,16 @@ use crate::{
         selection::select_partiture_view,
         settings::{paused_view, settings_view},
     },
-    widgets::notes::Note,
+    widgets::{notes::Note, partiture::Partiture},
 };
-use iced::{Element, Subscription, time::every};
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, Ordering},
-};
+use iced::{Element, Event, Point, Subscription, event::listen, keyboard, time::every};
+use serde_json::Value;
 use std::{
     error, fs,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
     time::{Duration, Instant},
 };
 
@@ -38,8 +39,8 @@ pub struct MyApp {
     pub start_time: Option<Instant>,
     pub settings: CustomSettings,
     pub finished: Arc<AtomicBool>,
-    pub notes_l_selected: Vec<Note>,
-    pub notes_r_selected: Vec<Note>,
+    pub partiture_r_selected: Partiture,
+    pub partiture_l_selected: Partiture,
 }
 
 // Implementar Default para MyApp
@@ -52,8 +53,8 @@ impl Default for MyApp {
             start_time: None,
             settings: MyApp::load_settings(),
             finished: Arc::new(AtomicBool::new(false)),
-            notes_l_selected: Vec::new(),
-            notes_r_selected: Vec::new(),
+            partiture_r_selected: Partiture::default(),
+            partiture_l_selected: Partiture::default(),
         }
     }
 }
@@ -63,9 +64,20 @@ impl MyApp {
     // Método para crear una nueva instancia de MyApp
     pub fn update(&mut self, message: AppMessage) {
         match message {
+            AppMessage::Event(event) => {
+                // Para la partitura derecha
+                if let Some(msg) = Self::detected_active(&event, &self.partiture_r_selected) {
+                    self.update(msg);
+                }
+
+                // Para la partitura izquierda
+                if let Some(msg) = Self::detected_active(&event, &self.partiture_l_selected) {
+                    self.update(msg);
+                }
+            }
+
             // Manejar mensajes del menu
             AppMessage::MainMenu(msg) => match msg {
-                // Cambiar al estado de juego
                 MainMenuMessage::SelectPartiture => {
                     self.state = AppState::SlectionPartiture;
                 }
@@ -92,8 +104,14 @@ impl MyApp {
 
                     elapsed -= self.settings.timer * 2.0;
 
-                    utils::utils::create_tempo_overlay(&mut self.notes_l_selected, elapsed);
-                    utils::utils::create_tempo_overlay(&mut self.notes_r_selected, elapsed);
+                    utils::utils::create_tempo_overlay(
+                        &mut self.partiture_l_selected.notes,
+                        elapsed,
+                    );
+                    utils::utils::create_tempo_overlay(
+                        &mut self.partiture_r_selected.notes,
+                        elapsed,
+                    );
                 }
                 GameMessage::RestartGame => {
                     let now: Instant = Instant::now();
@@ -137,14 +155,22 @@ impl MyApp {
                     self.actual_time = Some(now);
                     self.start_time = Some(now);
                     self.finished.store(false, Ordering::SeqCst);
-                    let arr =
+                    let arr: Vec<Value> =
                         helper_json::load_partiture(&asset_path!("notes.json")).unwrap_or_default();
-                    self.notes_l_selected =
+
+                    // Cargar notas de la partitura seleccionada
+                    let mut notes_l: Vec<Note> =
                         helper_json::load_notes_from_file(&arr, string.as_str(), "left")
                             .unwrap_or_default();
-                    self.notes_r_selected =
+                    let mut note_r: Vec<Note> =
                         helper_json::load_notes_from_file(&arr, string.as_str(), "right")
                             .unwrap_or_default();
+
+                    // Sanitizar notas con los datos necesarios
+                    let (notes_l_sanitized, notes_r_sanitized) =
+                        helper_json::sanitize_notes(&mut notes_l, &mut note_r);
+                    self.partiture_l_selected.notes = notes_l_sanitized;
+                    self.partiture_r_selected.notes = notes_r_sanitized;
 
                     // Cambiamos el estado a el juego
                     self.state = AppState::Game;
@@ -153,6 +179,25 @@ impl MyApp {
                     self.state = AppState::MainMenu;
                 }
             },
+        }
+    }
+
+    fn detected_active(event: &Event, partiture: &Partiture) -> Option<AppMessage> {
+        if partiture.elapsed > partiture.time {
+            Some(AppMessage::Game(GameMessage::Finished))
+        } else {
+            match event {
+                Event::Keyboard(keyboard::Event::KeyPressed { key, .. }) => match key {
+                    keyboard::Key::Named(keyboard::key::Named::Escape) => {
+                        Some(AppMessage::Game(GameMessage::PauseGame))
+                    }
+                    keyboard::Key::Named(keyboard::key::Named::Space) => {
+                        Some(AppMessage::Game(GameMessage::PauseGame))
+                    }
+                    _ => None,
+                },
+                _ => None,
+            }
         }
     }
 
@@ -166,8 +211,8 @@ impl MyApp {
                 self.start_time,
                 self.actual_time,
                 &self.settings,
-                &self.notes_l_selected,
-                &self.notes_r_selected,
+                &self.partiture_l_selected,
+                &self.partiture_r_selected,
             ),
             AppState::Settings => settings_view(&self.settings),
             AppState::Paused => paused_view(self.finished.clone(), &self.settings),
@@ -177,8 +222,11 @@ impl MyApp {
     // Método para manejar las suscripciones de la aplicación
     pub fn subscription(&self) -> Subscription<AppMessage> {
         match self.state {
-            AppState::Game => every(Duration::from_millis(16))
-                .map(|instant| AppMessage::Game(GameMessage::Tick(instant))),
+            AppState::Game => Subscription::batch(vec![
+                every(Duration::from_millis(16))
+                    .map(|instant| AppMessage::Game(GameMessage::Tick(instant))),
+                listen().map(AppMessage::Event),
+            ]),
             _ => Subscription::none(),
         }
     }
