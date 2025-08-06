@@ -8,8 +8,6 @@ use std::sync::{Arc, mpsc};
 use crate::widgets::notes::Note;
 
 pub fn get_frecuency(note: &mut Note) {
-    print!("Listening for frequencies...\n");
-
     // Inicializa el host y el dispositivo de entrada
     let host: Host = cpal::default_host();
     let device: Device = host

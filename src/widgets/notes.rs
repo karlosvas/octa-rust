@@ -36,19 +36,17 @@ impl Note {
     }
 
     // Dibujar redonda (4)
-    fn draw_whole_note(&self, frame: &mut Frame, center: Point) {
-        let (black, white) = self.get_note_colors();
-
+    fn draw_whole_note(&self, frame: &mut Frame, center: Point, palette: &PaletteColors) {
         // Dibuja la cabeza de la nota como un círculo
         let head: Path = Path::rectangle(center, Size::new(8.0, 5.0));
 
         // Relleno blanco
-        frame.fill(&head, white);
+        frame.fill(&head, palette.secondary);
         // Borde negro grueso
         frame.stroke(
             &head,
             Stroke {
-                style: Style::Solid(black),
+                style: Style::Solid(palette.primary),
                 width: 4.0,
                 ..Stroke::default()
             },
@@ -56,115 +54,106 @@ impl Note {
     }
 
     // Dibujar blanca (2)
-    fn draw_half_note(&self, frame: &mut Frame, center: Point) {
-        let (black, white) = self.get_note_colors();
-
+    fn draw_half_note(&self, frame: &mut Frame, center: Point, palette: &PaletteColors) {
         // Dibuja la cabeza de la nota como un círculo
         let head: Path = Path::rectangle(center, Size::new(8.0, 5.0));
         // Relleno blanco
-        frame.fill(&head, white);
+        frame.fill(&head, palette.secondary);
         // Borde negro grueso
         frame.stroke(
             &head,
             Stroke {
-                style: Style::Solid(black),
+                style: Style::Solid(palette.primary),
                 width: 4.0,
                 ..Stroke::default()
             },
         );
 
         // Dibujar la plica
-        self.draw_stem(frame, center, black);
+        self.draw_stem(frame, center, palette.primary);
     }
 
     // Dibujar negra (1)
-    fn draw_quarter_note(&self, frame: &mut Frame, center: Point) {
-        let (black, _white) = self.get_note_colors();
-
+    fn draw_quarter_note(&self, frame: &mut Frame, center: Point, palette: &PaletteColors) {
         // Dibuja la cabeza de la nota como un círculo
         let head: Path = Path::rectangle(center, Size::new(10.0, 5.0));
         // Relleno blanco
-        frame.fill(&head, black);
+        frame.fill(&head, palette.secondary);
         // Borde negro grueso
         frame.stroke(
             &head,
             Stroke {
-                style: Style::Solid(black),
+                style: Style::Solid(palette.primary),
                 width: 4.0,
                 ..Stroke::default()
             },
         );
 
         // Dibujar la plica
-        self.draw_stem(frame, center, black);
+        self.draw_stem(frame, center, palette.primary);
     }
 
     // Dibujar corchea (0.5)
-    fn draw_eighth_note(&self, frame: &mut Frame, center: Point) {
-        let (black, _white) = self.get_note_colors();
-
+    fn draw_eighth_note(&self, frame: &mut Frame, center: Point, palette: &PaletteColors) {
         // Dibuja la cabeza de la nota como un círculo
         let head: Path = Path::rectangle(center, Size::new(10.0, 5.0));
 
         // Relleno negro
-        frame.fill(&head, black);
+        frame.fill(&head, palette.primary);
         // Borde negro grueso
         frame.stroke(
             &head,
             Stroke {
-                style: Style::Solid(black),
+                style: Style::Solid(palette.primary),
                 width: 4.0,
                 ..Stroke::default()
             },
         );
 
         // Dibujar la plica
-        self.draw_stem(frame, center, black);
+        self.draw_stem(frame, center, palette.primary);
         // Dibujar la bandera
-        self.draw_flag(frame, center, black);
+        self.draw_flag(frame, center, palette.primary);
     }
 
     // Dibujar semicorchea (0.25)
-    fn draw_sixteenth_note(&self, frame: &mut Frame, center: Point) {
-        self.draw_eighth_note(frame, center);
-        let (black, _white) = self.get_note_colors();
+    fn draw_sixteenth_note(&self, frame: &mut Frame, center: Point, palette: &PaletteColors) {
+        self.draw_eighth_note(frame, center, palette);
 
         let head: Path = Path::rectangle(center, Size::new(6.0, 3.0));
-        frame.fill(&head, black);
+        frame.fill(&head, palette.secondary);
 
         // Dibujar la plica
-        self.draw_stem(frame, center, black);
+        self.draw_stem(frame, center, palette.primary);
         // Dibujar la bandera
-        self.draw_flag(frame, center, black);
+        self.draw_flag(frame, center, palette.secondary);
     }
 
     // Dibujar fusa (0.125)
-    fn draw_thirty_second_note(&self, frame: &mut Frame, center: Point) {
-        let (black, _white) = self.get_note_colors();
+    fn draw_thirty_second_note(&self, frame: &mut Frame, center: Point, palette: &PaletteColors) {
+        self.draw_sixteenth_note(frame, center, palette);
 
-        self.draw_sixteenth_note(frame, center);
+        self.draw_sixteenth_note(frame, center, palette);
 
         let head: Path = Path::rectangle(center, Size::new(2.0, 2.0));
-        frame.fill(&head, black);
+        frame.fill(&head, palette.secondary);
 
         // Dibujar la plica
-        self.draw_stem(frame, center, black);
+        self.draw_stem(frame, center, palette.primary);
         // Dibujar la bandera
-        self.draw_flag(frame, center, black);
+        self.draw_flag(frame, center, palette.secondary);
     }
 
     // Dibujar semifusa (0.0625)
-    fn draw_sixty_fourth_note(&self, frame: &mut Frame, center: Point) {
-        let (black, _white) = self.get_note_colors();
-
-        self.draw_thirty_second_note(frame, center);
+    fn draw_sixty_fourth_note(&self, frame: &mut Frame, center: Point, palette: &PaletteColors) {
+        self.draw_thirty_second_note(frame, center, palette);
         let head: Path = Path::rectangle(center, Size::new(2.0, 2.0));
-        frame.fill(&head, black);
+        frame.fill(&head, palette.secondary);
 
         // Dibujar la plica
-        self.draw_stem(frame, center, black);
+        self.draw_stem(frame, center, palette.primary);
         // Dibujar la bandera
-        self.draw_flag(frame, center, black);
+        self.draw_flag(frame, center, palette.secondary);
     }
 
     // // Dibujar plica vertical, negras y blancas
@@ -227,6 +216,7 @@ impl Note {
                 frame.stroke(
                     &line,
                     Stroke {
+                        style: Style::Solid(color),
                         width: 5.0,
                         ..Stroke::default()
                     },
@@ -251,30 +241,38 @@ impl Note {
         frame.fill(&path, color);
     }
 
-    // // Obtener colores según el estado de la nota
-    fn get_note_colors(&self) -> (Color, Color) {
+    fn get_note_colors(&self) -> PaletteColors {
         if self.is_active {
-            // Rojo cangrejo más vivo pero pastel: RGB(0.94, 0.35, 0.25)
-            (
-                Color::from_rgb(0.94, 0.35, 0.25),
-                Color::from_rgb(0.94, 0.35, 0.25),
-            )
+            PaletteColors {
+                primary: Color::from_rgb(0.94, 0.35, 0.25),
+                secondary: Color::WHITE,
+            }
         } else {
-            (Color::BLACK, Color::WHITE)
+            PaletteColors {
+                primary: Color::BLACK,
+                secondary: Color::WHITE,
+            }
         }
     }
 
     // Dibujar la nota
     pub fn draw(&self, frame: &mut Frame, center: Point) {
+        let palette: PaletteColors = self.get_note_colors();
+
         match self.duration {
-            4.0 => self.draw_whole_note(frame, center),
-            2.0 => self.draw_half_note(frame, center),
-            1.0 => self.draw_quarter_note(frame, center),
-            0.5 => self.draw_eighth_note(frame, center),
-            0.25 => self.draw_sixteenth_note(frame, center),
-            0.125 => self.draw_thirty_second_note(frame, center),
-            0.0625 => self.draw_sixty_fourth_note(frame, center),
-            _ => self.draw_quarter_note(frame, center),
+            4.0 => self.draw_whole_note(frame, center, &palette),
+            2.0 => self.draw_half_note(frame, center, &palette),
+            1.0 => self.draw_quarter_note(frame, center, &palette),
+            0.5 => self.draw_eighth_note(frame, center, &palette),
+            0.25 => self.draw_sixteenth_note(frame, center, &palette),
+            0.125 => self.draw_thirty_second_note(frame, center, &palette),
+            0.0625 => self.draw_sixty_fourth_note(frame, center, &palette),
+            _ => self.draw_quarter_note(frame, center, &palette),
         }
     }
+}
+
+pub struct PaletteColors {
+    pub primary: Color,
+    pub secondary: Color,
 }

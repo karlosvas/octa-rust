@@ -1,11 +1,14 @@
-use crate::{
-    models::settings::CustomSettings,
-    widgets::{all_notes_overlay::AllNotesOverlay, notes::Note},
-};
-use iced::{
-    Color, Pixels, Point, Rectangle, Renderer, Size, Theme,
-    mouse::Cursor,
-    widget::canvas::{Frame, Geometry, Path, Program},
+use {
+    crate::{
+        models::settings::CustomSettings,
+        widgets::{all_notes_overlay::AllNotesOverlay, notes::Note},
+    },
+    iced::{
+        Color, Pixels, Point, Rectangle, Renderer, Size, Theme,
+        alignment::{Horizontal, Vertical},
+        mouse::Cursor,
+        widget::canvas::{Frame, Geometry, Path, Program, Text},
+    },
 };
 
 // Estructura de la partitura
@@ -91,24 +94,28 @@ impl Partiture {
         frame.fill(&line_path, Color::BLACK);
     }
 
+    // Dibujar el temporizador de introducción
     fn draw_intro_overlay(&self, frame: &mut Frame, bounds: Rectangle) {
-        let elapsed: i32 = self.elapsed.floor() as i32;
+        let elapsed: i32 = self.elapsed as i32;
         if elapsed <= 2 {
             // Dibuja el fondo semitransparente
             frame.fill(
                 &Path::rectangle(bounds.position(), bounds.size()),
                 Color::from_rgba(0.0, 0.0, 0.0, 0.5),
             );
-            // Dibuja el número grande en el centro
-            frame.fill_text(iced::widget::canvas::Text {
-                content: (3 - elapsed).to_string(),
-                position: Point::new(bounds.width / 2.0, bounds.height / 2.0),
-                color: Color::WHITE,
-                size: Pixels(120.0),
-                horizontal_alignment: iced::alignment::Horizontal::Center,
-                vertical_alignment: iced::alignment::Vertical::Center,
-                ..Default::default()
-            });
+
+            if self.hand == "right" {
+                // Dibuja el número grande en el centro
+                frame.fill_text(Text {
+                    content: (3 - elapsed).to_string(),
+                    position: Point::new(bounds.width / 2.0, bounds.height / 2.0),
+                    color: Color::from_rgb(0.94, 0.35, 0.25),
+                    size: Pixels(150.0),
+                    horizontal_alignment: Horizontal::Center,
+                    vertical_alignment: Vertical::Center,
+                    ..Default::default()
+                });
+            }
         }
     }
 }
@@ -138,9 +145,10 @@ impl<AppMessage> Program<AppMessage> for Partiture {
         self.draw_staff_lines(&mut frame, relative_bounds);
 
         // Dibuja todas las notas usando AllNotesOverlay
-        let overlay: AllNotesOverlay<'_> = AllNotesOverlay { partiture: &self };
+        let overlay: AllNotesOverlay = AllNotesOverlay { partiture: &self };
         overlay.draw(&mut frame, relative_bounds);
 
+        // Dibuja el introducción del temporizador
         self.draw_intro_overlay(&mut frame, relative_bounds);
 
         // Retorna el frame como geometría

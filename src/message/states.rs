@@ -14,7 +14,7 @@ pub enum AppMessage {
 }
 
 // Estados de la aplicación
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum AppState {
     MainMenu,
     SlectionPartiture,
@@ -26,7 +26,7 @@ pub enum AppState {
 // Mensajes específicos para la selección de partituras
 #[derive(Debug, Clone)]
 pub enum SelectionMessage {
-    StartGame(String),
+    StartGame(&'static str),
     BackToMenu,
 }
 
@@ -40,10 +40,8 @@ pub enum MainMenuMessage {
 
 #[derive(Debug, Clone)]
 pub enum GameMessage {
-    PauseGame,
     RestartGame,
     ResumeGame,
-    Finished,
     Tick(Instant),
 }
 

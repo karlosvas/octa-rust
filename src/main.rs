@@ -6,15 +6,16 @@ mod utils;
 mod widgets;
 use app::MyApp;
 mod views;
-
-use iced::{
-    Font, Result, Size,
-    advanced::graphics::core::window,
-    application,
-    font::{Family, Stretch, Style, Weight},
-    window::{Icon, Position, icon::from_file_data},
+use {
+    iced::{
+        Font, Result, Size,
+        advanced::graphics::core::window,
+        application,
+        font::{Family, Stretch, Style, Weight},
+        window::{Icon, Position, icon::from_file_data},
+    },
+    std::{borrow::Cow, fs::read},
 };
-use std::{borrow::Cow, fs::read};
 
 // Punto de inicio de la aplicación
 fn main() -> Result {

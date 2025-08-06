@@ -58,11 +58,11 @@ pub fn settings_view(settings: &CustomSettings) -> Element<AppMessage> {
 
 // Menú de pausa
 pub fn paused_view(finished: Arc<AtomicBool>, settings: &CustomSettings) -> Element<AppMessage> {
-    let mut pause_column: Column<'_, AppMessage> = column![].spacing(20);
+    let mut pause_column: Column<AppMessage> = column![].spacing(20);
 
     if !finished.load(Ordering::SeqCst) {
         // Crear botón para reanudar el juego
-        let resume_button: Button<'_, AppMessage> = reusable::create_button(
+        let resume_button: Button<AppMessage> = reusable::create_button(
             AppMessage::Game(GameMessage::ResumeGame),
             Some("Resume Game"),
             None,
@@ -71,7 +71,7 @@ pub fn paused_view(finished: Arc<AtomicBool>, settings: &CustomSettings) -> Elem
     }
 
     // Crear botón para reiniciar el juego
-    let restart_button: Button<'_, AppMessage> = reusable::create_button(
+    let restart_button: Button<AppMessage> = reusable::create_button(
         AppMessage::Game(GameMessage::RestartGame),
         Some("Restart Game"),
         None,
@@ -79,7 +79,7 @@ pub fn paused_view(finished: Arc<AtomicBool>, settings: &CustomSettings) -> Elem
     pause_column = pause_column.push(restart_button);
 
     // Crear botón para volver al menú principal
-    let back_to_menu_button: Button<'_, AppMessage> = reusable::create_button(
+    let back_to_menu_button: Button<AppMessage> = reusable::create_button(
         AppMessage::Settings(SettingsMessage::BackToMenu),
         Some("Back to Main Menu"),
         None,

@@ -78,13 +78,10 @@ impl<'a> AllNotesOverlay<'a> {
         // Obtenemos la posicion actual de la nota
         let mut actual_position: Point = Point::new(note_x, note_y);
         // Creamos la instancia de la nota que vamos a crear
-        let new_note: Note = Note::new(
-            note.name.clone(),
-            note.pitch.clone(),
-            note.duration.clone(),
-            note.joined.clone(),
-            last_position.clone(),
-        );
+        let new_note: Note = Note {
+            last_position: *last_position,
+            ..note.clone()
+        };
 
         // Dibujamos la nota creada en el layout
         new_note.draw(frame, actual_position);

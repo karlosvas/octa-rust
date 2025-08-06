@@ -1,26 +1,34 @@
-use crate::{
-    message::states::{
-        AppMessage, AppState, GameMessage, MainMenuMessage, SelectionMessage, SettingsMessage,
+use {
+    crate::{
+        message::states::{
+            AppMessage, AppState, GameMessage, MainMenuMessage, SelectionMessage, SettingsMessage,
+        },
+        models::settings::CustomSettings,
+        utils::{self, helper_json},
+        views::{
+            game::game_view,
+            main::main_menu_view,
+            selection::select_partiture_view,
+            settings::{paused_view, settings_view},
+        },
+        widgets::{notes::Note, partiture::Partiture},
     },
-    models::settings::CustomSettings,
-    utils::{self, helper_json},
-    views::{
-        game::game_view,
-        main::main_menu_view,
-        selection::select_partiture_view,
-        settings::{paused_view, settings_view},
+    iced::{
+        Element, Event, Subscription,
+        event::listen,
+        keyboard::{self, Key},
+        time::every,
     },
-    widgets::{notes::Note, partiture::Partiture},
-};
-use iced::{Element, Event, Point, Subscription, event::listen, keyboard, time::every};
-use serde_json::Value;
-use std::{
-    error, fs,
-    sync::{
-        Arc,
-        atomic::{AtomicBool, Ordering},
+    serde_json::Value,
+    std::{
+        error, fs,
+        process::exit,
+        sync::{
+            Arc,
+            atomic::{AtomicBool, Ordering},
+        },
+        time::{Duration, Instant},
     },
-    time::{Duration, Instant},
 };
 
 // Ruta a assets
@@ -33,14 +41,15 @@ macro_rules! asset_path {
 
 //  Estructura de la aplicación
 pub struct MyApp {
-    state: AppState,
-    pub selected_partiture: Option<String>,
-    pub actual_time: Option<Instant>,
-    pub start_time: Option<Instant>,
-    pub settings: CustomSettings,
-    pub finished: Arc<AtomicBool>,
-    pub partiture_r_selected: Partiture,
-    pub partiture_l_selected: Partiture,
+    state: AppState,                      // Estado de la app
+    start_time: Option<Instant>,          // Momento de inicio de la partitura
+    actual_time: Option<Instant>,         // Tiempo actual de la partitura
+    paused_elapsed: Option<f32>,          // Tiempo pausado
+    settings: CustomSettings,             // Ajustes
+    finished: Arc<AtomicBool>,            // Fin de la partitura
+    partiture_name: Option<&'static str>, // Partitura selecionada
+    partiture_r_selected: Partiture,      // Partitura derecha
+    partiture_l_selected: Partiture,      // Partitura izquierda
 }
 
 // Implementar Default para MyApp
@@ -48,11 +57,12 @@ impl Default for MyApp {
     fn default() -> Self {
         Self {
             state: AppState::MainMenu,
-            selected_partiture: None,
-            actual_time: None,
             start_time: None,
+            actual_time: None,
+            paused_elapsed: None,
             settings: MyApp::load_settings(),
             finished: Arc::new(AtomicBool::new(false)),
+            partiture_name: None,
             partiture_r_selected: Partiture::default(),
             partiture_l_selected: Partiture::default(),
         }
@@ -64,17 +74,21 @@ impl MyApp {
     // Método para crear una nueva instancia de MyApp
     pub fn update(&mut self, message: AppMessage) {
         match message {
-            AppMessage::Event(event) => {
-                // Para la partitura derecha
-                if let Some(msg) = Self::detected_active(&event, &self.partiture_r_selected) {
-                    self.update(msg);
-                }
-
-                // Para la partitura izquierda
-                if let Some(msg) = Self::detected_active(&event, &self.partiture_l_selected) {
-                    self.update(msg);
-                }
-            }
+            // Eventos de teclado en el juego
+            AppMessage::Event(msg) => match msg {
+                Event::Keyboard(keyboard::Event::KeyPressed { key, .. }) => match key {
+                    Key::Named(keyboard::key::Named::Escape)
+                    | Key::Named(keyboard::key::Named::Space) => {
+                        if self.state == AppState::Paused {
+                            self.resume_game();
+                        } else if self.state == AppState::Game {
+                            self.pause_game();
+                        }
+                    }
+                    _ => {}
+                },
+                _ => {}
+            },
 
             // Manejar mensajes del menu
             AppMessage::MainMenu(msg) => match msg {
@@ -83,54 +97,62 @@ impl MyApp {
                 }
                 // Salir de la aplicación
                 MainMenuMessage::Exit => {
-                    std::process::exit(0);
+                    exit(0);
                 }
                 // Abrir configuración
                 MainMenuMessage::OpenSettings => {
                     self.state = AppState::Settings;
                 }
             },
+
             // Manejar mensajes del juego
             AppMessage::Game(msg) => match msg {
                 GameMessage::Tick(instant) => {
-                    self.actual_time = Some(instant);
-                    let mut elapsed: f32 = self
-                        .actual_time
-                        .and_then(|current| {
-                            self.start_time
-                                .map(|start| current.duration_since(start).as_secs_f32())
-                        })
-                        .unwrap_or(0.0);
+                    if self.state == AppState::Game {
+                        self.actual_time = Some(instant);
+                        let elapsed: f32 = self
+                            .actual_time
+                            .and_then(|current| {
+                                self.start_time
+                                    .map(|start| (current.duration_since(start)).as_secs_f32())
+                            })
+                            .unwrap_or(0.0);
 
-                    elapsed -= self.settings.timer * 2.0;
+                        let max_duration = self
+                            .partiture_l_selected
+                            .time
+                            .max(self.partiture_r_selected.time);
+                        if elapsed > max_duration + (self.settings.timer * 2.0) {
+                            // Si el tiempo transcurrido es mayor que la duración máxima, finalizar el juego
+                            self.finished.store(true, Ordering::SeqCst);
+                            self.state = AppState::Paused;
+                        }
 
-                    utils::utils::create_tempo_overlay(
-                        &mut self.partiture_l_selected.notes,
-                        elapsed,
-                    );
-                    utils::utils::create_tempo_overlay(
-                        &mut self.partiture_r_selected.notes,
-                        elapsed,
-                    );
+                        utils::utils::create_tempo_overlay(
+                            &mut self.partiture_l_selected.notes,
+                            elapsed,
+                        );
+                        utils::utils::create_tempo_overlay(
+                            &mut self.partiture_r_selected.notes,
+                            elapsed,
+                        );
+                    }
                 }
+
                 GameMessage::RestartGame => {
                     let now: Instant = Instant::now();
                     self.actual_time = Some(now);
                     self.start_time = Some(now);
+                    self.paused_elapsed = None;
                     self.state = AppState::Game;
                     self.finished.store(false, Ordering::SeqCst);
                 }
-                GameMessage::PauseGame => {
-                    self.state = AppState::Paused;
-                }
+
                 GameMessage::ResumeGame => {
-                    self.state = AppState::Game;
-                }
-                GameMessage::Finished => {
-                    self.finished.store(true, Ordering::SeqCst);
-                    self.state = AppState::Paused;
+                    self.resume_game();
                 }
             },
+
             // Manejar mensajes de configuración
             AppMessage::Settings(msg) => match msg {
                 SettingsMessage::ChangeTheme(val) => {
@@ -146,31 +168,33 @@ impl MyApp {
                     self.state = AppState::MainMenu;
                 }
             },
+
             // Manejar mensajes de selección de partitura
             AppMessage::Selection(msg) => match msg {
                 // Manejar selección de partitura
-                SelectionMessage::StartGame(string) => {
+                SelectionMessage::StartGame(name) => {
                     let now: Instant = Instant::now();
-                    self.selected_partiture = Some(string.clone());
+                    self.partiture_name = Some(name);
                     self.actual_time = Some(now);
                     self.start_time = Some(now);
+                    self.paused_elapsed = None;
                     self.finished.store(false, Ordering::SeqCst);
                     let arr: Vec<Value> =
                         helper_json::load_partiture(&asset_path!("notes.json")).unwrap_or_default();
 
                     // Cargar notas de la partitura seleccionada
                     let mut notes_l: Vec<Note> =
-                        helper_json::load_notes_from_file(&arr, string.as_str(), "left")
-                            .unwrap_or_default();
+                        helper_json::load_notes_from_file(&arr, name, "left").unwrap_or_default();
                     let mut note_r: Vec<Note> =
-                        helper_json::load_notes_from_file(&arr, string.as_str(), "right")
-                            .unwrap_or_default();
+                        helper_json::load_notes_from_file(&arr, name, "right").unwrap_or_default();
 
-                    // Sanitizar notas con los datos necesarios
-                    let (notes_l_sanitized, notes_r_sanitized) =
-                        helper_json::sanitize_notes(&mut notes_l, &mut note_r);
-                    self.partiture_l_selected.notes = notes_l_sanitized;
-                    self.partiture_r_selected.notes = notes_r_sanitized;
+                    // Sanitizar notas con los datos necesarios y asignar los datos a las partituras
+                    helper_json::sanitize_data(
+                        &mut self.partiture_l_selected,
+                        &mut self.partiture_r_selected,
+                        &mut notes_l,
+                        &mut note_r,
+                    );
 
                     // Cambiamos el estado a el juego
                     self.state = AppState::Game;
@@ -182,37 +206,18 @@ impl MyApp {
         }
     }
 
-    fn detected_active(event: &Event, partiture: &Partiture) -> Option<AppMessage> {
-        if partiture.elapsed > partiture.time {
-            Some(AppMessage::Game(GameMessage::Finished))
-        } else {
-            match event {
-                Event::Keyboard(keyboard::Event::KeyPressed { key, .. }) => match key {
-                    keyboard::Key::Named(keyboard::key::Named::Escape) => {
-                        Some(AppMessage::Game(GameMessage::PauseGame))
-                    }
-                    keyboard::Key::Named(keyboard::key::Named::Space) => {
-                        Some(AppMessage::Game(GameMessage::PauseGame))
-                    }
-                    _ => None,
-                },
-                _ => None,
-            }
-        }
-    }
-
     // Método para crear la vista de la aplicación
     pub fn view(&self) -> Element<AppMessage> {
         match self.state {
             AppState::MainMenu => main_menu_view(&self.settings),
             AppState::SlectionPartiture => select_partiture_view(&self.settings),
             AppState::Game => game_view(
-                self.selected_partiture.as_deref(),
                 self.start_time,
                 self.actual_time,
                 &self.settings,
-                &self.partiture_l_selected,
+                self.partiture_name,
                 &self.partiture_r_selected,
+                &self.partiture_l_selected,
             ),
             AppState::Settings => settings_view(&self.settings),
             AppState::Paused => paused_view(self.finished.clone(), &self.settings),
@@ -227,6 +232,10 @@ impl MyApp {
                     .map(|instant| AppMessage::Game(GameMessage::Tick(instant))),
                 listen().map(AppMessage::Event),
             ]),
+            AppState::Paused => {
+                // Solo escuchar eventos de teclado, sin tick de tiempo
+                listen().map(AppMessage::Event)
+            }
             _ => Subscription::none(),
         }
     }
@@ -246,5 +255,30 @@ impl MyApp {
         let json: String = serde_json::to_string_pretty(&self.settings)?;
         fs::write(path, json)?;
         Ok(())
+    }
+
+    // Métodos auxiliares para manejar pausa/reanudación
+    pub fn pause_game(&mut self) {
+        // Calcular tiempo transcurrido hasta ahora
+        let elapsed = self
+            .actual_time
+            .and_then(|current| {
+                self.start_time
+                    .map(|start| current.duration_since(start).as_secs_f32())
+            })
+            .unwrap_or(0.0);
+
+        self.paused_elapsed = Some(elapsed);
+        self.state = AppState::Paused;
+    }
+    pub fn resume_game(&mut self) {
+        // Ajustar start_time para que continue desde donde se pausó
+        if let Some(paused_time) = self.paused_elapsed {
+            let now = Instant::now();
+            self.start_time = Some(now - Duration::from_secs_f32(paused_time));
+            self.actual_time = Some(now);
+            self.paused_elapsed = None;
+        }
+        self.state = AppState::Game;
     }
 }

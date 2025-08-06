@@ -1,6 +1,8 @@
-use crate::widgets::notes::Note;
-use serde_json::{Value, from_str, from_value};
-use std::fs::read_to_string;
+use {
+    crate::widgets::{notes::Note, partiture::Partiture},
+    serde_json::{Value, from_str, from_value},
+    std::fs::read_to_string,
+};
 
 pub fn load_partiture(file_path: &str) -> Result<Vec<Value>, String> {
     if file_path.is_empty() {
@@ -48,11 +50,17 @@ pub fn load_notes_from_file(
     Err(format!("❌ Pieza '{}' no encontrada en el archivo", piece_name).into())
 }
 
-pub fn sanitize_notes(notes_l: &mut Vec<Note>, notes_r: &mut Vec<Note>) -> (Vec<Note>, Vec<Note>) {
+pub fn sanitize_data(
+    partiture_l: &mut Partiture,
+    partiture_r: &mut Partiture,
+    notes_l: &mut Vec<Note>,
+    notes_r: &mut Vec<Note>,
+) {
     let mut calculate_join: f32 = 0.0;
     let mut joined: bool = false;
 
     for i in 0..notes_l.len() {
+        partiture_l.time += notes_l[i].duration;
         if notes_l[i].duration <= 0.5 {
             calculate_join += notes_l[i].duration;
             if calculate_join >= 1.0 {
@@ -71,8 +79,10 @@ pub fn sanitize_notes(notes_l: &mut Vec<Note>, notes_r: &mut Vec<Note>) -> (Vec<
             }
         }
     }
+    partiture_l.notes = notes_l.clone();
 
     for i in 0..notes_r.len() {
+        partiture_r.time += notes_r[i].duration;
         if notes_r[i].duration <= 0.5 {
             calculate_join += notes_r[i].duration;
             if calculate_join >= 1.0 {
@@ -91,6 +101,5 @@ pub fn sanitize_notes(notes_l: &mut Vec<Note>, notes_r: &mut Vec<Note>) -> (Vec<
             }
         }
     }
-
-    (notes_l.clone(), notes_r.clone())
+    partiture_r.notes = notes_r.clone();
 }

@@ -91,7 +91,6 @@ pub fn create_grand_staff(
 pub fn create_tempo_overlay(notes: &mut Vec<Note>, elapsed: f32) {
     // Calcular cuando juntar las notas
     let mut joined: u8 = 0;
-    // let mut current_position: Point;
 
     for note in notes.iter_mut() {
         note.is_active = true;
@@ -104,7 +103,6 @@ pub fn create_tempo_overlay(notes: &mut Vec<Note>, elapsed: f32) {
             if joined == 2 {
                 // Si es la segunda vez entonces juntamos
                 note.joined = true;
-                // note.position = current_position;
                 joined = 0;
             }
         } else {

@@ -50,9 +50,9 @@ impl CustomTheme {
 
 #[derive(serde::Deserialize, serde::Serialize, Clone)]
 pub struct CustomSettings {
-    pub theme: CustomTheme,
-    pub difficulty: Difficulty,
-    pub timer: f32,
+    pub theme: CustomTheme,     // Thema actual
+    pub difficulty: Difficulty, // Dificultad
+    pub timer: f32,             // Tiempo que dura la partitura
 }
 
 impl Default for CustomSettings {

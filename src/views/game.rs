@@ -8,18 +8,18 @@ use crate::{
 use iced::{
     Element, Length, Padding,
     alignment::{Horizontal, Vertical},
-    widget::{Column, Container, Text, column},
+    widget::{Column, Container, Text, canvas::Frame, column},
 };
 use std::time::Instant;
 
 // Menú del juego
 pub fn game_view<'a>(
-    partiture_name: Option<&'a str>,
     start_time: Option<Instant>,
     actual_time: Option<Instant>,
     settings: &'a CustomSettings,
-    partiture_l: &'a Partiture,
+    partiture_name: Option<&'static str>,
     partiture_r: &'a Partiture,
+    partiture_l: &'a Partiture,
 ) -> Element<'a, AppMessage> {
     // Crear el título de la partitura
     let elapsed: f32 =
@@ -51,9 +51,15 @@ pub fn game_view<'a>(
         "left".to_string(),
     );
 
+    let name = if elapsed < 2.0 {
+        ""
+    } else {
+        partiture_name.unwrap_or("")
+    };
+
     // Crear el título de la partitura
     let title: Element<AppMessage> = Container::new(
-        Text::new(partiture_name.unwrap_or("for-elise"))
+        Text::new(name)
             .size(40)
             .width(Length::Fill)
             .align_x(Horizontal::Center)
