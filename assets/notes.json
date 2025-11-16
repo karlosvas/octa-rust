@@ -19,9 +19,24 @@
         { "name": "G#4", "start": 8.5, "pitch": 68, "duration": 0.5 },
         { "name": "B4", "start": 9.0, "pitch": 71, "duration": 1.0 },
         { "name": "C5", "start": 10.0, "pitch": 72, "duration": 0.5 },
-        { "name": "E5", "start": 10.5, "pitch": 76, "duration": 0.5 },
-        { "name": "A5", "start": 11.0, "pitch": 81, "duration": 1.0 },
-        { "name": "B5", "start": 12.0, "pitch": 83, "duration": 1.0 }
+        { "name": "E4", "start": 10.5, "pitch": 64, "duration": 0.5 },
+        { "name": "E5", "start": 11.0, "pitch": 76, "duration": 0.5 },
+        { "name": "D#5", "start": 11.5, "pitch": 75, "duration": 0.5 },
+        { "name": "E5", "start": 12.0, "pitch": 76, "duration": 0.5 },
+        { "name": "D#5", "start": 12.5, "pitch": 75, "duration": 0.5 },
+        { "name": "E5", "start": 13.0, "pitch": 76, "duration": 0.5 },
+        { "name": "B4", "start": 13.5, "pitch": 71, "duration": 0.5 },
+        { "name": "D5", "start": 14.0, "pitch": 74, "duration": 0.5 },
+        { "name": "C5", "start": 14.5, "pitch": 72, "duration": 0.5 },
+        { "name": "A4", "start": 15.0, "pitch": 69, "duration": 1.0 },
+        { "name": "C4", "start": 16.0, "pitch": 60, "duration": 0.5 },
+        { "name": "E4", "start": 16.5, "pitch": 64, "duration": 0.5 },
+        { "name": "A4", "start": 17.0, "pitch": 69, "duration": 1.0 },
+        { "name": "B4", "start": 18.0, "pitch": 71, "duration": 1.0 },
+        { "name": "E4", "start": 19.0, "pitch": 64, "duration": 0.5 },
+        { "name": "C5", "start": 19.5, "pitch": 72, "duration": 0.5 },
+        { "name": "B4", "start": 20.0, "pitch": 71, "duration": 1.0 },
+        { "name": "A4", "start": 21.0, "pitch": 69, "duration": 2.0 }
       ],
       "left": [
         { "name": "A2", "start": 0.0, "pitch": 45, "duration": 2.0 },
@@ -30,7 +45,12 @@
         { "name": "E3", "start": 6.0, "pitch": 52, "duration": 2.0 },
         { "name": "A2", "start": 8.0, "pitch": 45, "duration": 2.0 },
         { "name": "E3", "start": 10.0, "pitch": 52, "duration": 2.0 },
-        { "name": "A3", "start": 12.0, "pitch": 57, "duration": 1.0 }
+        { "name": "A2", "start": 12.0, "pitch": 45, "duration": 2.0 },
+        { "name": "A3", "start": 14.0, "pitch": 57, "duration": 2.0 },
+        { "name": "C3", "start": 16.0, "pitch": 48, "duration": 2.0 },
+        { "name": "E3", "start": 18.0, "pitch": 52, "duration": 2.0 },
+        { "name": "A2", "start": 20.0, "pitch": 45, "duration": 2.0 },
+        { "name": "E3", "start": 22.0, "pitch": 52, "duration": 1.0 }
       ]
     }
   },
@@ -44,13 +64,45 @@
         { "name": "F5", "start": 2.0, "pitch": 77, "duration": 0.5 },
         { "name": "A5", "start": 2.5, "pitch": 81, "duration": 0.5 },
         { "name": "F5", "start": 3.0, "pitch": 77, "duration": 0.5 },
-        { "name": "A5", "start": 3.5, "pitch": 81, "duration": 0.5 }
+        { "name": "A5", "start": 3.5, "pitch": 81, "duration": 0.5 },
+        { "name": "E5", "start": 4.0, "pitch": 76, "duration": 0.5 },
+        { "name": "G5", "start": 4.5, "pitch": 79, "duration": 0.5 },
+        { "name": "E5", "start": 5.0, "pitch": 76, "duration": 0.5 },
+        { "name": "G5", "start": 5.5, "pitch": 79, "duration": 0.5 },
+        { "name": "F5", "start": 6.0, "pitch": 77, "duration": 0.5 },
+        { "name": "A5", "start": 6.5, "pitch": 81, "duration": 0.5 },
+        { "name": "F5", "start": 7.0, "pitch": 77, "duration": 0.5 },
+        { "name": "A5", "start": 7.5, "pitch": 81, "duration": 0.5 },
+        { "name": "G5", "start": 8.0, "pitch": 79, "duration": 0.5 },
+        { "name": "B5", "start": 8.5, "pitch": 83, "duration": 0.5 },
+        { "name": "G5", "start": 9.0, "pitch": 79, "duration": 0.5 },
+        { "name": "B5", "start": 9.5, "pitch": 83, "duration": 0.5 },
+        { "name": "C6", "start": 10.0, "pitch": 84, "duration": 0.5 },
+        { "name": "A5", "start": 10.5, "pitch": 81, "duration": 0.5 },
+        { "name": "G5", "start": 11.0, "pitch": 79, "duration": 0.5 },
+        { "name": "E5", "start": 11.5, "pitch": 76, "duration": 0.5 },
+        { "name": "E5", "start": 12.0, "pitch": 76, "duration": 1.0 },
+        { "name": "D5", "start": 13.0, "pitch": 74, "duration": 0.5 },
+        { "name": "E5", "start": 13.5, "pitch": 76, "duration": 0.5 },
+        { "name": "G5", "start": 14.0, "pitch": 79, "duration": 1.0 },
+        { "name": "E5", "start": 15.0, "pitch": 76, "duration": 1.0 }
       ],
       "left": [
         { "name": "E3", "start": 0.0, "pitch": 52, "duration": 1.0 },
         { "name": "B3", "start": 1.0, "pitch": 59, "duration": 1.0 },
         { "name": "A3", "start": 2.0, "pitch": 57, "duration": 1.0 },
-        { "name": "E3", "start": 3.0, "pitch": 52, "duration": 1.0 }
+        { "name": "E3", "start": 3.0, "pitch": 52, "duration": 1.0 },
+        { "name": "E3", "start": 4.0, "pitch": 52, "duration": 1.0 },
+        { "name": "B3", "start": 5.0, "pitch": 59, "duration": 1.0 },
+        { "name": "A3", "start": 6.0, "pitch": 57, "duration": 1.0 },
+        { "name": "E3", "start": 7.0, "pitch": 52, "duration": 1.0 },
+        { "name": "G3", "start": 8.0, "pitch": 55, "duration": 1.0 },
+        { "name": "D4", "start": 9.0, "pitch": 62, "duration": 1.0 },
+        { "name": "C4", "start": 10.0, "pitch": 60, "duration": 1.0 },
+        { "name": "G3", "start": 11.0, "pitch": 55, "duration": 1.0 },
+        { "name": "E3", "start": 12.0, "pitch": 52, "duration": 1.0 },
+        { "name": "B3", "start": 13.0, "pitch": 59, "duration": 1.0 },
+        { "name": "E3", "start": 14.0, "pitch": 52, "duration": 2.0 }
       ]
     }
   }

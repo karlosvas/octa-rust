@@ -4,7 +4,7 @@ use {
             AppMessage, AppState, GameMessage, MainMenuMessage, SelectionMessage, SettingsMessage,
         },
         models::settings::CustomSettings,
-        utils::{self, helper_json},
+        utils::{self, helper_json, utils::create_tempo_overlay},
         views::{
             game::game_view,
             main::main_menu_view,
@@ -122,20 +122,14 @@ impl MyApp {
                             .partiture_l_selected
                             .time
                             .max(self.partiture_r_selected.time);
-                        if elapsed > max_duration + (self.settings.timer * 2.0) {
+                        if elapsed > max_duration {
                             // Si el tiempo transcurrido es mayor que la duración máxima, finalizar el juego
                             self.finished.store(true, Ordering::SeqCst);
                             self.state = AppState::Paused;
                         }
 
-                        utils::utils::create_tempo_overlay(
-                            &mut self.partiture_l_selected.notes,
-                            elapsed,
-                        );
-                        utils::utils::create_tempo_overlay(
-                            &mut self.partiture_r_selected.notes,
-                            elapsed,
-                        );
+                        create_tempo_overlay(&mut self.partiture_l_selected.notes, elapsed);
+                        create_tempo_overlay(&mut self.partiture_r_selected.notes, elapsed);
                     }
                 }
 

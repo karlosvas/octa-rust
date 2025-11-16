@@ -8,11 +8,7 @@ pub struct AllNotesOverlay<'a> {
 
 impl<'a> AllNotesOverlay<'a> {
     pub fn draw(&self, frame: &mut Frame, layout_bounds: Rectangle) {
-        if self.partiture.elapsed < self.partiture.settings.timer {
-            return;
-        }
-
-        let mut curret_time: f32 = 0.0;
+        let mut last_measure_drawn: i32 = -1; // Inicializar en -1 para dibujar el primer compás
         let mut last_position: Point = Point::default();
 
         for note in self.partiture.notes.iter() {
@@ -20,7 +16,7 @@ impl<'a> AllNotesOverlay<'a> {
                 note,
                 frame,
                 layout_bounds,
-                &mut curret_time,
+                &mut last_measure_drawn,
                 &mut last_position,
             );
         }
@@ -35,7 +31,7 @@ impl<'a> AllNotesOverlay<'a> {
         note: &Note,
         frame: &mut Frame,
         layout_bounds: Rectangle,
-        curret_time: &mut f32,
+        last_measure_drawn: &mut i32,
         last_position: &mut Point,
     ) {
         // Calcular el área disponible para las notas (con padding)
@@ -55,20 +51,36 @@ impl<'a> AllNotesOverlay<'a> {
         // La nota se mueve de izquierda a derecha según el tiempo actual
         let note_x: f32 = work_area.x + progress * work_area.width;
 
-        // Calculamos cuando dibujar el compás
-        *curret_time += note.duration;
+        // Calcular el compás basado en la posición temporal absoluta de la nota
+        let beats_per_measure: f32 = 4.0; // Compás de 4/4
+
+        // Calcular en qué compás está esta nota
+        let note_measure: i32 = (note.start / beats_per_measure).floor() as i32;
+
+        // Dibujar todas las líneas de compás entre el último dibujado y el actual
+        let mut measure_to_draw: i32 = *last_measure_drawn + 1;
+        while measure_to_draw <= note_measure {
+            // Calcular la posición X exacta del inicio de este compás
+            let measure_start_time: f32 = (measure_to_draw as f32) * beats_per_measure;
+            let measure_progress: f32 = (measure_start_time
+                - (self.partiture.elapsed - init_counter))
+                / self.partiture.time;
+            let measure_x: f32 = work_area.x + measure_progress * work_area.width;
+
+            // Solo dibujar si la línea de compás está visible
+            if measure_x >= work_area.x && measure_x <= (work_area.x + work_area.width) {
+                Partiture::draw_compas(frame, work_area, measure_x);
+            }
+
+            measure_to_draw += 1;
+        }
+
+        // Actualizar el último compás dibujado
+        *last_measure_drawn = note_measure;
 
         // Solo dibujar la nota si está dentro del área visible
         if note_x < work_area.x || note_x > (work_area.x + work_area.width) {
-            if *curret_time > 4.0 {
-                *curret_time = 0.0;
-            }
             return;
-        } else {
-            if *curret_time > 4.0 {
-                Partiture::draw_compas(frame, work_area, note_x);
-                *curret_time = 0.0;
-            }
         }
 
         // Calculamos la posición en y

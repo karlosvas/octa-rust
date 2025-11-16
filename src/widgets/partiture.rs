@@ -4,10 +4,9 @@ use {
         widgets::{all_notes_overlay::AllNotesOverlay, notes::Note},
     },
     iced::{
-        Color, Pixels, Point, Rectangle, Renderer, Size, Theme,
-        alignment::{Horizontal, Vertical},
+        Color, Point, Rectangle, Renderer, Size, Theme,
         mouse::Cursor,
-        widget::canvas::{Frame, Geometry, Path, Program, Text},
+        widget::canvas::{Frame, Geometry, Path, Program},
     },
 };
 
@@ -93,31 +92,6 @@ impl Partiture {
 
         frame.fill(&line_path, Color::BLACK);
     }
-
-    // Dibujar el temporizador de introducción
-    fn draw_intro_overlay(&self, frame: &mut Frame, bounds: Rectangle) {
-        let elapsed: i32 = self.elapsed as i32;
-        if elapsed <= 2 {
-            // Dibuja el fondo semitransparente
-            frame.fill(
-                &Path::rectangle(bounds.position(), bounds.size()),
-                Color::from_rgba(0.0, 0.0, 0.0, 0.5),
-            );
-
-            if self.hand == "right" {
-                // Dibuja el número grande en el centro
-                frame.fill_text(Text {
-                    content: (3 - elapsed).to_string(),
-                    position: Point::new(bounds.width / 2.0, bounds.height / 2.0),
-                    color: Color::from_rgb(0.94, 0.35, 0.25),
-                    size: Pixels(150.0),
-                    horizontal_alignment: Horizontal::Center,
-                    vertical_alignment: Vertical::Center,
-                    ..Default::default()
-                });
-            }
-        }
-    }
 }
 
 impl<AppMessage> Program<AppMessage> for Partiture {
@@ -132,7 +106,7 @@ impl<AppMessage> Program<AppMessage> for Partiture {
         _cursor: Cursor,
     ) -> Vec<Geometry> {
         let mut frame: Frame<Renderer> = Frame::new(renderer, bounds.size());
-        let relative_bounds = Rectangle {
+        let relative_bounds: Rectangle = Rectangle {
             x: 0.0,
             y: 0.0,
             width: bounds.width,
@@ -147,9 +121,6 @@ impl<AppMessage> Program<AppMessage> for Partiture {
         // Dibuja todas las notas usando AllNotesOverlay
         let overlay: AllNotesOverlay = AllNotesOverlay { partiture: &self };
         overlay.draw(&mut frame, relative_bounds);
-
-        // Dibuja el introducción del temporizador
-        self.draw_intro_overlay(&mut frame, relative_bounds);
 
         // Retorna el frame como geometría
         vec![frame.into_geometry()]

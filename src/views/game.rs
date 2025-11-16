@@ -3,12 +3,12 @@ use crate::{
     models::settings::CustomSettings,
     styles::custom_style,
     utils::utils,
-    widgets::{notes::Note, partiture::Partiture},
+    widgets::{intro_overlay::IntroOverlay, notes::Note, partiture::Partiture},
 };
 use iced::{
     Element, Length, Padding,
     alignment::{Horizontal, Vertical},
-    widget::{Column, Container, Text, canvas::Frame, column},
+    widget::{Canvas, Column, Container, Stack, Text, column},
 };
 use std::time::Instant;
 
@@ -51,7 +51,8 @@ pub fn game_view<'a>(
         "left".to_string(),
     );
 
-    let name = if elapsed < 2.0 {
+    // Esperamos a que pase el temporizador
+    let name = if elapsed < 3.0 {
         ""
     } else {
         partiture_name.unwrap_or("")
@@ -78,17 +79,21 @@ pub fn game_view<'a>(
     let (partiture_r_overlay, partiture_l_overlay) =
         utils::create_grand_staff(partiture_r, partiture_l);
 
+    let overlay = Canvas::new(IntroOverlay { elapsed })
+        .width(Length::Fill)
+        .height(Length::Fill);
+
     // Crear la columna principal del juego
-    let game_column: Column<AppMessage> = column![
+    let game_content: Column<AppMessage> = column![
         title, // Título de la partitura
         partiture_r_overlay,
-        partiture_l_overlay, // Parte mano derecha de la partitura
+        partiture_l_overlay // Parte mano derecha de la partitura
     ]
     .height(Length::Fill)
     .spacing(20);
 
     // Contenedor principal del juego
-    Container::new(game_column)
+    Container::new(Stack::new().push(game_content).push(overlay))
         .width(Length::Fill)
         .height(Length::Fill)
         .align_x(Horizontal::Center)

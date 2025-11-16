@@ -18,7 +18,8 @@ pub fn create_grand_staff(
 ) {
     let fixed_height_staff: f32 = 200.0;
 
-    let original_r = Container::new(
+    // Partitura de mano derecha ubicada arriba
+    let original_r: Container<AppMessage> = Container::new(
         Canvas::new(partiture_r)
             .width(Length::Fill)
             .height(Length::Fixed(fixed_height_staff)),
@@ -32,7 +33,8 @@ pub fn create_grand_staff(
         left: 10.0,
     });
 
-    let original_l = Container::new(
+    // Partitura de mano izquierda ubicada abajo
+    let original_l: Container<AppMessage> = Container::new(
         Canvas::new(partiture_l)
             .width(Length::Fill)
             .height(Length::Fixed(fixed_height_staff)),
@@ -46,7 +48,8 @@ pub fn create_grand_staff(
         left: 10.0,
     });
 
-    let partitura_r_img =
+    // Imagen de clave de sol
+    let partitura_r_img: Container<AppMessage> =
         Container::new(create_image(&asset_path!("clave-de-sol.png"), 180.0, 80.0))
             .height(Length::Fixed(fixed_height_staff))
             .padding(Padding {
@@ -56,7 +59,8 @@ pub fn create_grand_staff(
                 left: 20.0,
             });
 
-    let partitura_l_img =
+    // Imagen de clave de fa
+    let partitura_l_img: Container<AppMessage> =
         Container::new(create_image(&asset_path!("clave-de-fa.png"), 150.0, 80.0))
             .height(Length::Fixed(fixed_height_staff))
             .padding(Padding {
@@ -66,7 +70,8 @@ pub fn create_grand_staff(
                 left: 20.0,
             });
 
-    let partiture_r_overlay = Container::new(
+    // Overlay de ambas partituras con sus respectivas claves
+    let partiture_r_overlay: Container<AppMessage> = Container::new(
         Stack::new()
             .push(original_r)
             .push(partitura_r_img)
@@ -84,6 +89,7 @@ pub fn create_grand_staff(
     .height(Length::Fixed(fixed_height_staff))
     .width(Length::Fill);
 
+    // Lo devolbemos para que se use en el juego
     (partiture_r_overlay, partiture_l_overlay)
 }
 
@@ -93,7 +99,7 @@ pub fn create_tempo_overlay(notes: &mut Vec<Note>, elapsed: f32) {
     let mut joined: u8 = 0;
 
     for note in notes.iter_mut() {
-        note.is_active = true;
+        // note.is_active = true;
         if note.start > elapsed {
             note.is_active = false;
         }
