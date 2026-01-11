@@ -3,21 +3,28 @@ use {
         message::states::{
             AppMessage, AppState, GameMessage, MainMenuMessage, SelectionMessage, SettingsMessage,
         },
-        models::settings::CustomSettings,
-        utils::{self, helper_json, utils::create_tempo_overlay},
+        models::{
+            note::Note,
+            partiture::{Hand, Partiture, PieceMetadata},
+            settings::CustomSettings,
+        },
+        utils::helper_json::{
+            get_metadata_and_section, get_price_metdata_compas, load_notes_from_file,
+            load_partiture, sanitize_data,
+        },
         views::{
             game::game_view,
-            main::main_menu_view,
+            menu::main_menu_view,
             selection::select_partiture_view,
             settings::{paused_view, settings_view},
         },
-        widgets::{notes::Note, partiture::Partiture},
     },
     iced::{
-        Element, Event, Subscription,
+        Element, Event, Length, Subscription, Theme,
         event::listen,
         keyboard::{self, Key},
         time::every,
+        widget::{Container, Text},
     },
     serde_json::Value,
     std::{
@@ -31,7 +38,7 @@ use {
     },
 };
 
-// Ruta a assets
+/// Macro para la ruta de assets
 #[macro_export]
 macro_rules! asset_path {
     ($filename:expr) => {
@@ -39,39 +46,39 @@ macro_rules! asset_path {
     };
 }
 
-//  Estructura de la aplicación
+/// Estructura de la aplicación
 pub struct MyApp {
-    state: AppState,                      // Estado de la app
-    start_time: Option<Instant>,          // Momento de inicio de la partitura
-    actual_time: Option<Instant>,         // Tiempo actual de la partitura
-    paused_elapsed: Option<f32>,          // Tiempo pausado
-    settings: CustomSettings,             // Ajustes
-    finished: Arc<AtomicBool>,            // Fin de la partitura
-    partiture_name: Option<&'static str>, // Partitura selecionada
-    partiture_r_selected: Partiture,      // Partitura derecha
-    partiture_l_selected: Partiture,      // Partitura izquierda
+    state: AppState,                                    // Estado de la app
+    start_time: Option<Instant>,                        // Momento de inicio de la partitura
+    actual_time: Option<Instant>,                       // Tiempo actual de la partitura
+    pause_started: Option<Instant>,                     // Momento en que se pausó
+    is_paused: Arc<AtomicBool>,                         // Tiempo pausado
+    settings: CustomSettings,                           // Ajustes
+    finished: Arc<AtomicBool>,                          // Fin de la partitura
+    partiture_name: Option<&'static str>,               // Partitura selecionada
+    partiture_selected: Option<(Partiture, Partiture)>, // Partitura derecha, izquierda
 }
 
-// Implementar Default para MyApp
+/// Implementar Default para MyApp
 impl Default for MyApp {
     fn default() -> Self {
         Self {
             state: AppState::MainMenu,
             start_time: None,
             actual_time: None,
-            paused_elapsed: None,
+            pause_started: None,
+            is_paused: Arc::new(AtomicBool::new(false)),
             settings: MyApp::load_settings(),
             finished: Arc::new(AtomicBool::new(false)),
             partiture_name: None,
-            partiture_r_selected: Partiture::default(),
-            partiture_l_selected: Partiture::default(),
+            partiture_selected: None,
         }
     }
 }
 
-// Implementación de la aplicación
+/// Implementación de la aplicación octarust
 impl MyApp {
-    // Método para crear una nueva instancia de MyApp
+    // Método para manejar los mensajes de la aplicación
     pub fn update(&mut self, message: AppMessage) {
         match message {
             // Eventos de teclado en el juego
@@ -79,10 +86,15 @@ impl MyApp {
                 Event::Keyboard(keyboard::Event::KeyPressed { key, .. }) => match key {
                     Key::Named(keyboard::key::Named::Escape)
                     | Key::Named(keyboard::key::Named::Space) => {
-                        if self.state == AppState::Paused {
-                            self.resume_game();
-                        } else if self.state == AppState::Game {
-                            self.pause_game();
+                        // Si no estaba pausado lo pausamos, y si estaba pausado lo despausamos
+                        self.is_paused.fetch_not(Ordering::SeqCst);
+
+                        if self.is_paused.load(Ordering::SeqCst) {
+                            // Pausando: guardar el momento actual
+                            self.pause_started = Some(Instant::now());
+                            self.state = AppState::Paused;
+                        } else {
+                            self.resume_game()
                         }
                     }
                     _ => {}
@@ -92,8 +104,9 @@ impl MyApp {
 
             // Manejar mensajes del menu
             AppMessage::MainMenu(msg) => match msg {
+                // Seleccionar partitura
                 MainMenuMessage::SelectPartiture => {
-                    self.state = AppState::SlectionPartiture;
+                    self.state = AppState::SelectionPartiture;
                 }
                 // Salir de la aplicación
                 MainMenuMessage::Exit => {
@@ -108,55 +121,49 @@ impl MyApp {
             // Manejar mensajes del juego
             AppMessage::Game(msg) => match msg {
                 GameMessage::Tick(instant) => {
-                    if self.state == AppState::Game {
-                        self.actual_time = Some(instant);
-                        let elapsed: f32 = self
-                            .actual_time
-                            .and_then(|current| {
-                                self.start_time
-                                    .map(|start| (current.duration_since(start)).as_secs_f32())
-                            })
-                            .unwrap_or(0.0);
+                    // Tiempo transcurrido desde que inició la applicacion
+                    let elapsed: f32 = self
+                        .start_time
+                        .map(|start| instant.duration_since(start).as_secs_f32())
+                        .unwrap_or(0.0);
 
-                        let max_duration = self
-                            .partiture_l_selected
-                            .time
-                            .max(self.partiture_r_selected.time);
-                        if elapsed > max_duration {
-                            // Si el tiempo transcurrido es mayor que la duración máxima, finalizar el juego
+                    // Esperamos a que la partitura tenga un valor
+                    if let Some((ref mut left_partiture, ref mut right_partiture)) =
+                        self.partiture_selected
+                    {
+                        // Si el tiempo transcurrido es mayor que la duración máxima + el timer del inicio y del final, finalizar el juego
+                        if elapsed > (right_partiture.time + (self.settings.timer * 2.0)) {
                             self.finished.store(true, Ordering::SeqCst);
                             self.state = AppState::Paused;
                         }
 
-                        create_tempo_overlay(&mut self.partiture_l_selected.notes, elapsed);
-                        create_tempo_overlay(&mut self.partiture_r_selected.notes, elapsed);
+                        // Actualizamos el tiempo elapsed
+                        right_partiture.elapsed = elapsed;
+                        left_partiture.elapsed = elapsed;
                     }
                 }
-
                 GameMessage::RestartGame => {
-                    let now: Instant = Instant::now();
-                    self.actual_time = Some(now);
-                    self.start_time = Some(now);
-                    self.paused_elapsed = None;
-                    self.state = AppState::Game;
-                    self.finished.store(false, Ordering::SeqCst);
+                    if let Some(name) = self.partiture_name {
+                        self.start_game_with_partiture(name)
+                    }
                 }
-
-                GameMessage::ResumeGame => {
-                    self.resume_game();
-                }
+                GameMessage::ResumeGame => self.resume_game(),
             },
 
             // Manejar mensajes de configuración
             AppMessage::Settings(msg) => match msg {
                 SettingsMessage::ChangeTheme(val) => {
-                    self.settings.theme = val;
-                    let _ = self.save_settings();
-                }
-                SettingsMessage::ChangeDifficulty(val) => {
-                    self.settings.difficulty = val;
-                    self.settings.timer = 3.0;
-                    let _ = self.save_settings();
+                    // Convert Theme to CustomTheme for storage
+                    use crate::models::settings::CustomTheme;
+                    self.settings.theme = match val {
+                        Theme::Light => CustomTheme::Light,
+                        Theme::Dark => CustomTheme::Dark,
+                        _ => CustomTheme::Dark, // Default to Dark for other themes
+                    };
+                    self.save_settings().unwrap_or_else(|e| {
+                        log::error!("{}", e);
+                        return;
+                    });
                 }
                 SettingsMessage::BackToMenu => {
                     self.state = AppState::MainMenu;
@@ -166,56 +173,32 @@ impl MyApp {
             // Manejar mensajes de selección de partitura
             AppMessage::Selection(msg) => match msg {
                 // Manejar selección de partitura
-                SelectionMessage::StartGame(name) => {
-                    let now: Instant = Instant::now();
-                    self.partiture_name = Some(name);
-                    self.actual_time = Some(now);
-                    self.start_time = Some(now);
-                    self.paused_elapsed = None;
-                    self.finished.store(false, Ordering::SeqCst);
-                    let arr: Vec<Value> =
-                        helper_json::load_partiture(&asset_path!("notes.json")).unwrap_or_default();
-
-                    // Cargar notas de la partitura seleccionada
-                    let mut notes_l: Vec<Note> =
-                        helper_json::load_notes_from_file(&arr, name, "left").unwrap_or_default();
-                    let mut note_r: Vec<Note> =
-                        helper_json::load_notes_from_file(&arr, name, "right").unwrap_or_default();
-
-                    // Sanitizar notas con los datos necesarios y asignar los datos a las partituras
-                    helper_json::sanitize_data(
-                        &mut self.partiture_l_selected,
-                        &mut self.partiture_r_selected,
-                        &mut notes_l,
-                        &mut note_r,
-                    );
-
-                    // Cambiamos el estado a el juego
-                    self.state = AppState::Game;
-                }
-                SelectionMessage::BackToMenu => {
-                    self.state = AppState::MainMenu;
-                }
+                SelectionMessage::StartGame(name) => self.start_game_with_partiture(name),
+                SelectionMessage::BackToMenu => self.state = AppState::MainMenu,
             },
         }
     }
 
-    // Método para crear la vista de la aplicación
-    pub fn view(&self) -> Element<AppMessage> {
+    // Método para crear la vista de la aplicación, dependiendo del estado de la aplicación, mostrar la vista correspondiente, empezamos con el menú principal
+    pub fn view(&self) -> Element<'_, AppMessage> {
         match self.state {
-            AppState::MainMenu => main_menu_view(&self.settings),
-            AppState::SlectionPartiture => select_partiture_view(&self.settings),
-            AppState::Game => game_view(
-                self.start_time,
-                self.actual_time,
-                &self.settings,
-                self.partiture_name,
-                &self.partiture_r_selected,
-                &self.partiture_l_selected,
-            ),
-            AppState::Settings => settings_view(&self.settings),
-            AppState::Paused => paused_view(self.finished.clone(), &self.settings),
+            AppState::MainMenu => main_menu_view(),
+            AppState::SelectionPartiture => select_partiture_view(),
+            AppState::Game => match &self.partiture_selected {
+                Some((left, right)) => game_view((left, right), &self.settings),
+                _ => Container::new(Text::new("Cargando partitura..."))
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .into(),
+            },
+            AppState::Settings => settings_view(&self.settings.get_iced_theme()),
+            AppState::Paused => paused_view(self.finished.clone()),
         }
+    }
+
+    // Método para obtener el tema actual de la aplicación
+    pub fn theme(&self) -> iced::Theme {
+        self.settings.get_iced_theme()
     }
 
     // Método para manejar las suscripciones de la aplicación
@@ -234,8 +217,8 @@ impl MyApp {
         }
     }
 
-    // Método para cargar y guardar la configuración
-    pub fn load_settings() -> CustomSettings {
+    // Cargar y guardar la configuración
+    fn load_settings() -> CustomSettings {
         let path: String = asset_path!("settings.json");
         fs::read_to_string(&path)
             .ok()
@@ -243,36 +226,122 @@ impl MyApp {
             .unwrap_or_default()
     }
 
-    // Método para guardar la configuración
-    pub fn save_settings(&self) -> Result<(), Box<dyn error::Error>> {
+    // Guardar la configuración
+    fn save_settings(&self) -> Result<(), Box<dyn error::Error>> {
         let path: String = asset_path!("settings.json");
         let json: String = serde_json::to_string_pretty(&self.settings)?;
         fs::write(path, json)?;
         Ok(())
     }
 
-    // Métodos auxiliares para manejar pausa/reanudación
-    pub fn pause_game(&mut self) {
-        // Calcular tiempo transcurrido hasta ahora
-        let elapsed = self
-            .actual_time
-            .and_then(|current| {
-                self.start_time
-                    .map(|start| current.duration_since(start).as_secs_f32())
-            })
-            .unwrap_or(0.0);
-
-        self.paused_elapsed = Some(elapsed);
-        self.state = AppState::Paused;
-    }
-    pub fn resume_game(&mut self) {
-        // Ajustar start_time para que continue desde donde se pausó
-        if let Some(paused_time) = self.paused_elapsed {
-            let now = Instant::now();
-            self.start_time = Some(now - Duration::from_secs_f32(paused_time));
-            self.actual_time = Some(now);
-            self.paused_elapsed = None;
+    /// Reanudar el juego
+    fn resume_game(&mut self) {
+        if let (Some(pause_start), Some(start)) = (self.pause_started, self.start_time) {
+            let pause_duration = Instant::now().duration_since(pause_start);
+            self.start_time = Some(start + pause_duration);
         }
+        self.pause_started = None;
+        self.state = AppState::Game;
+    }
+
+    /// Empezar juego con partitura
+    fn start_game_with_partiture(&mut self, name: &'static str) {
+        // Iniciamos los tiempos
+        let now: Instant = Instant::now();
+        self.partiture_name = Some(name);
+        self.actual_time = Some(now);
+        self.start_time = Some(now);
+        self.pause_started = None;
+
+        // Le decimos que no a terminado y que no esta pausado
+        self.finished.store(false, Ordering::SeqCst);
+        self.is_paused.store(false, Ordering::SeqCst);
+
+        // Array con todas las notas
+        let file_notes: Vec<Value> = match load_partiture(&asset_path!("partitures.json")) {
+            Ok(notes) => notes,
+            Err(e) => {
+                log::error!("Partituras no encontradas -> {}", e);
+                return;
+            }
+        };
+
+        // Obtenemos la metadata y la secciones
+        let (metadata, sections) = match get_metadata_and_section(&file_notes, name) {
+            Ok((m, s)) => (m, s),
+            Err(e) => {
+                log::error!("No se pudo obtener metadata/sections: {}", e);
+                return;
+            }
+        };
+
+        // Cargar notas de la partitura seleccionada
+        let notes_l: Vec<Note> = match load_notes_from_file(&Hand::Left, &metadata, &sections) {
+            Ok(notes) => notes,
+            Err(e) => {
+                log::error!("Error cargando notas mano derecha -> {}", e);
+                return;
+            }
+        };
+        let notes_r: Vec<Note> = match load_notes_from_file(&Hand::Right, &metadata, &sections) {
+            Ok(notes) => notes,
+            Err(e) => {
+                log::error!("Error cargando notas mano derecha -> {}", e);
+                return;
+            }
+        };
+
+        //  Calcular duración total antes de crear Partiture (usar máximo, no el último elemento)
+        let duration_left: f32 = notes_l
+            .iter()
+            .map(|n| n.start + n.duration)
+            .fold(0.0, f32::max);
+        let duration_right: f32 = notes_r
+            .iter()
+            .map(|n| n.start + n.duration)
+            .fold(0.0, f32::max);
+        let total_duration: f32 = duration_left.max(duration_right);
+
+        // Crear las partituras con las notas cargadas
+        let mut partiture_l: Partiture = Partiture {
+            notes: notes_l,
+            time: total_duration,
+            elapsed: 0.0,
+            settings: self.settings.clone(),
+            hand: Hand::Left,
+            metadata: None,
+            img_width: 200.0,
+        };
+        let mut partiture_r: Partiture = Partiture {
+            notes: notes_r,
+            time: total_duration,
+            elapsed: 0.0,
+            settings: self.settings.clone(),
+            hand: Hand::Right,
+            metadata: None,
+            img_width: 200.0,
+        };
+
+        let fur_elise_meta: PieceMetadata = match get_price_metdata_compas(metadata) {
+            Ok(data) => data,
+            Err(e) => {
+                log::error!("Error obteniendo metadata del compás: {}", e);
+                return;
+            }
+        };
+
+        // Damos los valores de metadata a las partituras para que lo tengan en cuenta a ala hora de dibujar compases velocidad etc
+        (partiture_r.metadata, partiture_l.metadata) =
+            (Some(fur_elise_meta.clone()), Some(fur_elise_meta));
+
+        // Sanitizar notas con los datos necesarios y asignar los datos a las partituras
+        sanitize_data(&mut partiture_r);
+        sanitize_data(&mut partiture_l);
+
+        // Actualizamos con la nueva partitura
+        self.partiture_selected = Some((partiture_l, partiture_r));
+
+        // Cambiamos el estado a el juego
         self.state = AppState::Game;
     }
 }

@@ -1,7 +1,7 @@
 use {
     crate::{
-        models::settings::CustomSettings,
-        widgets::{all_notes_overlay::AllNotesOverlay, notes::Note},
+        models::partiture::{Partiture, PieceMetadata},
+        widgets::all_notes_overlay::AllNotesOverlay,
     },
     iced::{
         Color, Point, Rectangle, Renderer, Size, Theme,
@@ -10,65 +10,30 @@ use {
     },
 };
 
-// Estructura de la partitura
-pub struct Partiture {
-    pub notes: Vec<Note>,         // Notas de la partitura
-    pub time: f32,                // Tiempo total de la partitura
-    pub elapsed: f32,             // Tiempo de actual de la partitura
-    pub settings: CustomSettings, // Configuración de la partitura
-    pub hand: String,             // Mano utilizada (izquierda o derecha)
-}
-
-impl Default for Partiture {
-    fn default() -> Self {
-        Partiture {
-            notes: Vec::new(),
-            time: 0.0,
-            elapsed: 0.0,
-            settings: CustomSettings::default(),
-            hand: "right".to_string(),
-        }
-    }
-}
-
-// Declare the lifetime parameter for the impl block
+/// En este archivo se define la funcionalidad de la partitura musical. Se ejecuta automaticamente en
+/// un canvas dentro de un contenedor.
+/// Justo al crearlo en la vista del juego (game_view).
+// Implementation for Partiture
 impl Partiture {
-    // Constructor para crear una partitura con notas predefinidas
-    pub fn new(
-        notes: Vec<Note>,
-        time: f32,
-        elapsed: f32,
-        settings: CustomSettings,
-        hand: String,
-    ) -> Self {
-        Self {
-            notes,
-            time,
-            elapsed: elapsed * settings.difficulty.get_multiplier(),
-            settings,
-            hand,
-        }
-    }
+    pub fn calculate_pixels_per_second(&self) -> f32 {
+        let base_note_value: f32 = self
+            .metadata
+            .as_ref()
+            .map(|m| m.base_note_value)
+            .unwrap_or(0.5);
 
-    // Dibujar el fondo de la partitura
-    fn draw_partiture_background(&self, frame: &mut Frame, bounds: Rectangle) {
-        frame.fill(
-            &Path::rectangle(bounds.position(), bounds.size()),
-            Color::WHITE,
-        );
+        const PIXELS_PER_BASE_NOTE: f32 = 50.0; // "Todas las corcheas ocupan 50px"
+
+        PIXELS_PER_BASE_NOTE / base_note_value
     }
 
     // Dibujar las líneas del pentagrama
     fn draw_staff_lines(&self, frame: &mut Frame, bounds: iced::Rectangle) {
-        // Cada línea tiene grosor 2.0, y hay 4 espacios entre ellas
-        // Para distribuirlo bien, usamos 6 secciones (5 líneas generan 6 huecos entre ellas)
         let line_height: f32 = 2.0;
         let line_spacing: f32 = (bounds.height - (5.0 * line_height)) / 5.0;
 
-        // Dibujar 5 líneas del pentagrama
         for i in 0..5 {
             let y: f32 = bounds.y + (i as f32 * (line_height + line_spacing));
-
             let linea: Path = Path::rectangle(
                 Point::new(bounds.x, y),
                 Size::new(bounds.width, line_height),
@@ -77,26 +42,67 @@ impl Partiture {
         }
     }
 
-    // Dibujar compás en una posición específica
-    pub fn draw_compas(frame: &mut Frame, layout_bounds: iced::Rectangle, note_x: f32) {
-        let width_percentage = 0.025; // 2.5% del ancho total (ajustable)
-        let offset = layout_bounds.width * width_percentage; // Si width=800, offset=20
-        let line_rect = Rectangle {
-            x: note_x - offset / 2.0, // Ajustar el offset para centrar la línea
-            y: layout_bounds.y,       // Ajustar el Y para que esté en el pentagrama
+    // Calcular duración de un compás completo
+    fn calculate_bar_duration(metadata: &PieceMetadata) -> f32 {
+        let (beats, _) = metadata.time_signature;
+        beats as f32 * metadata.base_note_value
+    }
+
+    // Dibujar línea divisoria de compás
+    // Dibujar todas las líneas de compás
+    fn draw_bar_lines(&self, frame: &mut Frame, layout_bounds: iced::Rectangle) {
+        let bar_duration: f32 = self
+            .metadata
+            .as_ref()
+            .map(|metadata| Self::calculate_bar_duration(metadata))
+            .unwrap_or(0.0);
+
+        let pixels_per_second: f32 = self.calculate_pixels_per_second();
+        let start_x: f32 = layout_bounds.x + self.img_width;
+
+        let current_time: f32 = self.elapsed - self.settings.timer;
+        let scroll_offset: f32 = current_time * pixels_per_second;
+
+        let num_bars: usize = (self.time / bar_duration).ceil() as usize;
+
+        for bar_index in 1..=num_bars {
+            let bar_time: f32 = bar_index as f32 * bar_duration;
+            let bar_absolute_x: f32 = bar_time * pixels_per_second;
+            let x_pos: f32 = start_x + bar_absolute_x - scroll_offset;
+
+            if x_pos >= start_x - 10.0 && x_pos <= start_x + layout_bounds.width + 10.0 {
+                Self::draw_bar_line(frame, layout_bounds, x_pos);
+            }
+        }
+    }
+
+    // Dibujar UNA línea divisoria de compás en posición específica
+    fn draw_bar_line(frame: &mut Frame, layout_bounds: iced::Rectangle, x_position: f32) {
+        let line_rect: Rectangle = Rectangle {
+            x: x_position - 1.0,
+            y: layout_bounds.y,
             width: 2.0,
-            height: layout_bounds.height, // Altura del compás (ajustable)
+            height: layout_bounds.height,
         };
 
         let line_path: Path = Path::rectangle(line_rect.position(), line_rect.size());
-
         frame.fill(&line_path, Color::BLACK);
+    }
+
+    // Dibujar el fondo y estructura completa de la partitura
+    fn draw_partiture(&self, frame: &mut Frame, relative_bounds: Rectangle) {
+        let screen_size = frame.size();
+        frame.fill(&Path::rectangle(Point::ORIGIN, screen_size), Color::WHITE);
+
+        self.draw_staff_lines(frame, relative_bounds);
+        self.draw_bar_lines(frame, relative_bounds);
     }
 }
 
 impl<AppMessage> Program<AppMessage> for Partiture {
     type State = ();
 
+    // Dibujar el elemento al crearlo
     fn draw(
         &self,
         _state: &Self::State,
@@ -105,7 +111,9 @@ impl<AppMessage> Program<AppMessage> for Partiture {
         bounds: Rectangle,
         _cursor: Cursor,
     ) -> Vec<Geometry> {
+        // Crear un frame para dibujar
         let mut frame: Frame<Renderer> = Frame::new(renderer, bounds.size());
+        // Definir los límites relativos (0,0) al tamaño del canvas todo el ancho y alto
         let relative_bounds: Rectangle = Rectangle {
             x: 0.0,
             y: 0.0,
@@ -113,10 +121,8 @@ impl<AppMessage> Program<AppMessage> for Partiture {
             height: bounds.height,
         };
 
-        // Dibujar el fondo de la partitura (equivalente al container)
-        self.draw_partiture_background(&mut frame, relative_bounds);
-        // Dibujar las 5 líneas del pentagrama (equivalente al column con rows)
-        self.draw_staff_lines(&mut frame, relative_bounds);
+        // Dibujar el fondo de la partitura
+        self.draw_partiture(&mut frame, relative_bounds);
 
         // Dibuja todas las notas usando AllNotesOverlay
         let overlay: AllNotesOverlay = AllNotesOverlay { partiture: &self };

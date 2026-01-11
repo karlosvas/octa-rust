@@ -1,88 +1,92 @@
-use crate::{
-    message::states::{AppMessage, GameMessage, SettingsMessage},
-    models::settings::{CustomSettings, CustomTheme, Difficulty},
-    styles::custom_style,
-    utils::reusable,
-};
-use iced::{
-    Element, Length, Theme,
-    alignment::{Horizontal, Vertical},
-    widget::{Button, Column, Container, Slider, column},
-};
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, Ordering},
+use {
+    crate::{
+        message::states::{AppMessage, GameMessage, SettingsMessage},
+        styles::custom_style,
+        utils::reusable,
+    },
+    iced::{
+        Element, Length, Theme,
+        alignment::{Horizontal, Vertical},
+        widget::{Button, Column, Container, column, toggler},
+    },
+    std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 // Vista de configuración
-pub fn settings_view(settings: &CustomSettings) -> Element<AppMessage> {
-    // Slider para cambiar el tema
-    let theme_slider: Slider<'_, i32, AppMessage, Theme> =
-        Slider::new(0..=1, settings.theme.get_theme(), |val: i32| {
-            AppMessage::Settings(SettingsMessage::ChangeTheme(
-                CustomTheme::get_theme_from_int(val),
-            ))
-        })
-        .step(1)
-        .width(400.0);
+pub fn settings_view(theme: &Theme) -> Element<'static, AppMessage> {
+    let theme_toggle = toggler(theme == &Theme::Dark)
+        .label("Cambiar Tema")
+        .text_size(24)
+        .size(30)
+        .text_alignment(Horizontal::Center)
+        .style(custom_style::toogle_theme)
+        .on_toggle(|is_dark| {
+            AppMessage::Settings(SettingsMessage::ChangeTheme(if is_dark {
+                Theme::Dark
+            } else {
+                Theme::Light
+            }))
+        });
 
-    // Slider para cambiar la dificultad
-    let dificulty_slider: Slider<'_, f32, AppMessage, Theme> = Slider::new(
-        0.5f32..=1.5f32,
-        settings.difficulty.get_multiplier(),
-        |val: f32| {
-            AppMessage::Settings(SettingsMessage::ChangeDifficulty(
-                Difficulty::get_dificulty_from_f32(val),
-            ))
-        },
-    )
-    .step(0.5f32)
-    .width(400.0);
-
-    // Boton para volver al menú principal
-    let back_to_menu: Button<'_, AppMessage> = reusable::create_button(
+    let back_to_menu: Button<AppMessage> = reusable::create_button(
         AppMessage::Settings(SettingsMessage::BackToMenu),
         Some("Back to Main Menu"),
         None,
+        Some(20.0),
     );
 
-    // Crear columna de configuración
-    Container::new(column![theme_slider, dificulty_slider, back_to_menu].spacing(20))
+    let content_view = Container::new(column![theme_toggle, back_to_menu].spacing(20))
+        .align_x(Horizontal::Center)
+        .align_y(Vertical::Center)
+        .width(400)
+        .max_width(400);
+
+    Container::new(content_view)
         .width(Length::Fill)
         .height(Length::Fill)
         .align_x(Horizontal::Center)
         .align_y(Vertical::Center)
-        .style(|theme| custom_style::background(theme, settings.theme.clone()))
+        .style(custom_style::background)
         .into()
 }
 
 // Menú de pausa
-pub fn paused_view(finished: Arc<AtomicBool>, settings: &CustomSettings) -> Element<AppMessage> {
+pub fn paused_view(finished: Arc<AtomicBool>) -> Element<'static, AppMessage> {
+    // Crear columna para el menú de pausa
     let mut pause_column: Column<AppMessage> = column![].spacing(20);
 
+    // Si el juego no ha terminado, añadir el botón de reanudar
     if !finished.load(Ordering::SeqCst) {
         // Crear botón para reanudar el juego
         let resume_button: Button<AppMessage> = reusable::create_button(
             AppMessage::Game(GameMessage::ResumeGame),
             Some("Resume Game"),
             None,
+            Some(24.0),
         );
         pause_column = pause_column.push(resume_button);
     }
 
     // Crear botón para reiniciar el juego
     let restart_button: Button<AppMessage> = reusable::create_button(
+        // Llama al evento Restar Game
         AppMessage::Game(GameMessage::RestartGame),
         Some("Restart Game"),
         None,
+        Some(24.0),
     );
     pause_column = pause_column.push(restart_button);
 
     // Crear botón para volver al menú principal
     let back_to_menu_button: Button<AppMessage> = reusable::create_button(
+        // Llama al evento back to menu
         AppMessage::Settings(SettingsMessage::BackToMenu),
         Some("Back to Main Menu"),
         None,
+        Some(24.0),
     );
     pause_column = pause_column.push(back_to_menu_button);
 
@@ -92,6 +96,6 @@ pub fn paused_view(finished: Arc<AtomicBool>, settings: &CustomSettings) -> Elem
         .height(Length::Fill)
         .align_x(Horizontal::Center)
         .align_y(Vertical::Center)
-        .style(|_theme| custom_style::background(_theme, settings.theme.clone()))
+        .style(|theme| custom_style::background(theme))
         .into()
 }

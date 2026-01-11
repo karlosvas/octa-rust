@@ -1,5 +1,5 @@
 [package]
-name = "OctaRust"
+name = "octarust"
 version = "0.1.0"
 edition = "2024"
 
@@ -10,3 +10,5 @@ serde_json = "1.0"  # Para intercambio de partituras
 toml = "0.8"        # Para configuración simple de app
 cpal = "0.15"
 rustfft = "6.1"
+log = "0.4"
+env_logger = "0.11"

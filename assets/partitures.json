@@ -1,0 +1,118 @@
+[
+  {
+    "for-elise": {
+      "metadata": {
+        "title": "Bagatelle in A minor, 'Für Elise' (WoO 59)",
+        "composer": "Ludwig van Beethoven",
+        "source": "Mutopia Project / Public Domain",
+        "meter": "3/8",
+        "tempo": "Poco moto",
+        "key": "A minor",
+        "note_duration_unit_seconds": 1.0,
+        "structure": ["A", "B", "A", "C", "A"],
+        "playback_instructions": "Play sections in order. After Section C, return to the start of Section A and play until the end of the first A section (the data here)."
+      },
+      "sections": {
+        "A": {
+          "start_time": 0.0,
+          "right": [
+            { "pitch": 76, "start": 0.0, "duration": 0.5 },
+            { "pitch": 75, "start": 0.5, "duration": 0.5 },
+            { "pitch": 76, "start": 1.0, "duration": 0.5 },
+            { "pitch": 75, "start": 1.5, "duration": 0.5 },
+            { "pitch": 76, "start": 2.0, "duration": 0.5 },
+            { "pitch": 71, "start": 2.5, "duration": 0.5 },
+            { "pitch": 74, "start": 3.0, "duration": 0.5 },
+            { "pitch": 72, "start": 3.5, "duration": 0.5 },
+            { "pitch": 69, "start": 4.0, "duration": 1.0 },
+            { "pitch": 60, "start": 5.0, "duration": 0.5 },
+            { "pitch": 64, "start": 5.5, "duration": 0.5 },
+            { "pitch": 69, "start": 6.0, "duration": 1.0 },
+            { "pitch": 71, "start": 7.0, "duration": 1.0 },
+            { "pitch": 64, "start": 8.0, "duration": 0.5 },
+            { "pitch": 68, "start": 8.5, "duration": 0.5 },
+            { "pitch": 71, "start": 9.0, "duration": 1.0 },
+            { "pitch": 72, "start": 10.0, "duration": 0.5 },
+            { "pitch": 76, "start": 10.5, "duration": 0.5 },
+            { "pitch": 81, "start": 11.0, "duration": 1.0 },
+            { "pitch": 83, "start": 12.0, "duration": 1.0 }
+          ],
+          "left": [
+            { "pitch": 45, "start": 0.0, "duration": 2.0 },
+            { "pitch": 57, "start": 2.0, "duration": 2.0 },
+            { "pitch": 48, "start": 4.0, "duration": 2.0 },
+            { "pitch": 52, "start": 6.0, "duration": 2.0 },
+            { "pitch": 45, "start": 8.0, "duration": 2.0 },
+            { "pitch": 52, "start": 10.0, "duration": 2.0 },
+            { "pitch": 57, "start": 12.0, "duration": 1.0 }
+          ]
+        },
+        "B": {
+          "start_time": 13.0,
+          "right": [
+            { "pitch": 72, "start": 13.0, "duration": 1.0 },
+            { "pitch": 76, "start": 14.0, "duration": 1.0 },
+            { "pitch": 79, "start": 15.0, "duration": 1.0 },
+            { "pitch": 76, "start": 16.0, "duration": 1.0 },
+            { "pitch": 72, "start": 17.0, "duration": 1.0 },
+            { "pitch": 71, "start": 18.0, "duration": 1.0 },
+            { "pitch": 72, "start": 19.0, "duration": 1.0 },
+            { "pitch": 74, "start": 20.0, "duration": 1.0 },
+            { "pitch": 71, "start": 21.0, "duration": 1.0 },
+            { "pitch": 69, "start": 22.0, "duration": 1.0 },
+            { "pitch": 67, "start": 23.0, "duration": 1.0 },
+            { "pitch": 69, "start": 24.0, "duration": 1.0 },
+            { "pitch": 71, "start": 25.0, "duration": 1.0 },
+            { "pitch": 64, "start": 26.0, "duration": 1.0 },
+            { "pitch": 69, "start": 27.0, "duration": 1.0 },
+            { "pitch": 71, "start": 28.0, "duration": 1.0 }
+          ],
+          "left": [
+            { "pitch": 48, "start": 13.0, "duration": 2.0 },
+            { "pitch": 52, "start": 15.0, "duration": 2.0 },
+            { "pitch": 55, "start": 17.0, "duration": 2.0 },
+            { "pitch": 48, "start": 19.0, "duration": 2.0 },
+            { "pitch": 50, "start": 21.0, "duration": 2.0 },
+            { "pitch": 45, "start": 23.0, "duration": 2.0 },
+            { "pitch": 48, "start": 25.0, "duration": 2.0 },
+            { "pitch": 52, "start": 27.0, "duration": 2.0 }
+          ]
+        },
+        "C": {
+          "start_time": 29.0,
+          "right": [
+            { "pitch": 64, "start": 29.0, "duration": 0.25 },
+            { "pitch": 65, "start": 29.25, "duration": 0.25 },
+            { "pitch": 64, "start": 29.5, "duration": 0.25 },
+            { "pitch": 62, "start": 29.75, "duration": 0.25 },
+            { "pitch": 64, "start": 30.0, "duration": 0.5 },
+            { "pitch": 60, "start": 30.5, "duration": 0.5 },
+            { "pitch": 59, "start": 31.0, "duration": 0.5 },
+            { "pitch": 57, "start": 31.5, "duration": 0.5 },
+            { "pitch": 59, "start": 32.0, "duration": 1.5 },
+            { "pitch": 52, "start": 33.5, "duration": 0.5 },
+            { "pitch": 64, "start": 34.0, "duration": 0.25 },
+            { "pitch": 65, "start": 34.25, "duration": 0.25 },
+            { "pitch": 64, "start": 34.5, "duration": 0.25 },
+            { "pitch": 62, "start": 34.75, "duration": 0.25 },
+            { "pitch": 64, "start": 35.0, "duration": 0.5 },
+            { "pitch": 60, "start": 35.5, "duration": 0.5 },
+            { "pitch": 59, "start": 36.0, "duration": 0.5 },
+            { "pitch": 57, "start": 36.5, "duration": 0.5 },
+            { "pitch": 59, "start": 37.0, "duration": 2.0 }
+          ],
+          "left": [
+            { "pitch": 29, "start": 29.0, "duration": 1.0 },
+            { "pitch": 41, "start": 30.0, "duration": 1.0 },
+            { "pitch": 45, "start": 31.0, "duration": 1.5 },
+            { "pitch": 33, "start": 32.5, "duration": 1.0 },
+            { "pitch": 29, "start": 33.5, "duration": 1.0 },
+            { "pitch": 41, "start": 34.5, "duration": 1.0 },
+            { "pitch": 45, "start": 35.5, "duration": 1.5 },
+            { "pitch": 33, "start": 37.0, "duration": 2.0 }
+          ]
+        }
+      }
+    }
+  }
+]

@@ -1,25 +1,22 @@
-use iced::Event;
+use {iced::Event, std::time::Instant};
 
-use crate::models::settings::{CustomTheme, Difficulty};
-use std::time::Instant;
-
-// Mensaje principal que engloba todos
+/// Mensajes principales de la App
 #[derive(Debug, Clone)]
 pub enum AppMessage {
-    MainMenu(MainMenuMessage),
-    Game(GameMessage),
-    Settings(SettingsMessage),
-    Selection(SelectionMessage),
-    Event(Event),
+    MainMenu(MainMenuMessage),   // Menú
+    Game(GameMessage),           // Juego
+    Settings(SettingsMessage),   // Ajustes
+    Selection(SelectionMessage), // Selecion de mensajes
+    Event(Event),                // Eventos
 }
 
-// Estados de la aplicación
+/// Estados principales de la App
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum AppState {
     MainMenu,
-    SlectionPartiture,
     Game,
     Settings,
+    SelectionPartiture,
     Paused,
 }
 
@@ -34,20 +31,19 @@ pub enum SelectionMessage {
 #[derive(Debug, Clone, Copy)]
 pub enum MainMenuMessage {
     SelectPartiture,
-    Exit,
     OpenSettings,
+    Exit,
 }
 
 #[derive(Debug, Clone)]
 pub enum GameMessage {
-    RestartGame,
-    ResumeGame,
     Tick(Instant),
+    ResumeGame,
+    RestartGame,
 }
 
 #[derive(Debug, Clone)]
 pub enum SettingsMessage {
-    ChangeDifficulty(Difficulty),
-    ChangeTheme(CustomTheme),
+    ChangeTheme(iced::Theme),
     BackToMenu,
 }

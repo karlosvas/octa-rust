@@ -4,11 +4,14 @@ use iced::{
     widget::{Button, Container, Image, Row, Text, image::Handle},
 };
 
+use crate::styles::custom_style;
+
 // Crear botones
 pub fn create_button<Message>(
     message: Message,
     text: Option<&str>,
     image: Option<Image>,
+    size: Option<f32>,
 ) -> Button<'_, Message>
 where
     Message: Clone + 'static,
@@ -22,7 +25,17 @@ where
 
     // Añadir texto si existe
     if let Some(txt) = text {
-        content.push(Text::new(txt).size(32).into());
+        content.push(
+            Text::new(txt)
+                .size(size.unwrap_or(20.0))
+                .font(iced::Font {
+                    weight: iced::font::Weight::Bold,
+                    ..Default::default()
+                })
+                .align_x(Horizontal::Center)
+                .align_y(Vertical::Center)
+                .into(),
+        );
     }
 
     // Crear contenedor con el contenido
@@ -39,12 +52,14 @@ where
         Container::new(button_content)
             .width(Length::Fill)
             .height(Length::Fill)
+            .padding(12)
             .align_x(Horizontal::Center)
             .align_y(Vertical::Center),
     )
     .on_press(message)
-    .width(Length::Fixed(400.0))
-    .height(Length::Fixed(50.0))
+    .width(Length::Fixed(250.0))
+    .height(Length::Fixed(60.0))
+    .style(custom_style::buttons)
 }
 
 // Crear imagenes
